@@ -8,8 +8,10 @@ import { useTiposTreino } from '../../hooks/useTiposTreino'
 import { useExercicios } from '../../hooks/useExercicios'
 import { PillarPageShell, type SaveState } from '../../components/ui/PillarPageShell'
 import { PillarTrendSection } from '../../components/ui/PillarTrendSection'
+import { ProgressBar } from '../../components/ui/ProgressBar'
 import { fieldInputClass, fieldLabelClass } from '../../components/ui/InstrumentCard'
-import { SetLogger, type LoggedSet } from '../../components/academia/SetLogger'
+import { TipoTreinoPicker } from '../../components/academia/TipoTreinoPicker'
+import { ExerciseAccordionRow, type LoggedSet } from '../../components/academia/ExerciseAccordionRow'
 import { IconGear } from '../../components/ui/icons'
 
 const TREND_DAYS = 14
@@ -250,82 +252,78 @@ export function AcademiaHojePage() {
 
           {modo === 'musculacao' && !tiposLoading && !exerciciosLoading && (
             <>
-              <div className="space-y-1">
-                <label className={fieldLabelClass}>TIPO DE TREINO</label>
-                <select
-                  value={tipoTreinoId ?? ''}
-                  onChange={(e) => setTipoTreinoId(e.target.value)}
-                  className={fieldInputClass}
-                >
-                  <option value="">Selecionar tipo de treino</option>
-                  {tipos.map((t) => (
-                    <option key={t.id} value={t.id}>
-                      {t.nome}
-                    </option>
-                  ))}
-                </select>
-                {tipos.length === 0 && (
-                  <p className="font-mono text-xs text-parchment-dim">
-                    Nenhum tipo cadastrado. Configure em "Tipos de Treino" na sidebar.
-                  </p>
-                )}
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-white/10 bg-ink-2 p-3">
-                <p className="font-mono text-xs tracking-wide text-brass">SÉRIES (OPCIONAL)</p>
-
-                {(tipoSelecionado?.itens ?? []).map((item) => (
-                  <SetLogger
-                    key={item.exercicio_id}
-                    nome={item.exercicio?.nome ?? ''}
-                    metaLabel={
-                      item.series_alvo || item.reps_alvo
-                        ? `alvo: ${item.series_alvo ?? '?'}x${item.reps_alvo ?? '?'}`
-                        : undefined
-                    }
-                    sets={setsForDate[item.exercicio_id] ?? []}
-                    onAddSet={(reps, carga) => handleAddSet(item.exercicio_id, reps, carga)}
-                    onRemoveSet={handleRemoveSet}
-                  />
-                ))}
-
-                {allExtraIds.map((id) => (
-                  <SetLogger
-                    key={id}
-                    nome={exercicioById.get(id)?.nome ?? ''}
-                    sets={setsForDate[id] ?? []}
-                    onAddSet={(reps, carga) => handleAddSet(id, reps, carga)}
-                    onRemoveSet={handleRemoveSet}
-                  />
-                ))}
-
-                <div className="flex flex-wrap gap-2">
-                  <select
-                    value={freeExercicioPick}
-                    onChange={(e) => setFreeExercicioPick(e.target.value)}
-                    className="rounded-md border border-white/15 bg-ink px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
-                  >
-                    <option value="">+ exercício livre</option>
-                    {pickerOptions.map((ex) => (
-                      <option key={ex.id} value={ex.id}>
-                        {ex.nome}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!freeExercicioPick) return
-                      setPendingExtraIds([...pendingExtraIds, freeExercicioPick])
-                      setFreeExercicioPick('')
-                    }}
-                    disabled={!freeExercicioPick}
-                    className="rounded-md bg-white/10 px-3 py-1 font-mono text-xs text-parchment disabled:opacity-50"
-                  >
-                    adicionar
-                  </button>
+              {tipos.length === 0 ? (
+                <p className="font-mono text-xs text-parchment-dim">
+                  Nenhum tipo cadastrado. Configure em "Tipos de Treino" na sidebar.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <label className={fieldLabelClass}>TIPO DE TREINO</label>
+                  <TipoTreinoPicker tipos={tipos} selectedId={tipoTreinoId} onSelect={setTipoTreinoId} />
                 </div>
-              </div>
+              )}
+
+              {tipoSelecionado && (
+                <div className="space-y-2.5 rounded-lg border border-white/10 bg-ink-2 p-3.5">
+                  <ProgressBar
+                    done={tipoSelecionado.itens.filter((i) => (setsForDate[i.exercicio_id]?.length ?? 0) > 0).length}
+                    total={tipoSelecionado.itens.length}
+                  />
+
+                  {tipoSelecionado.itens.map((item) => (
+                    <ExerciseAccordionRow
+                      key={item.exercicio_id}
+                      nome={item.exercicio?.nome ?? ''}
+                      metaLabel={
+                        item.series_alvo || item.reps_alvo
+                          ? `alvo ${item.series_alvo ?? '?'}×${item.reps_alvo ?? '?'}`
+                          : undefined
+                      }
+                      sets={setsForDate[item.exercicio_id] ?? []}
+                      onAddSet={(reps, carga) => handleAddSet(item.exercicio_id, reps, carga)}
+                      onRemoveSet={handleRemoveSet}
+                    />
+                  ))}
+
+                  {allExtraIds.map((id) => (
+                    <ExerciseAccordionRow
+                      key={id}
+                      nome={exercicioById.get(id)?.nome ?? ''}
+                      sets={setsForDate[id] ?? []}
+                      defaultOpen
+                      onAddSet={(reps, carga) => handleAddSet(id, reps, carga)}
+                      onRemoveSet={handleRemoveSet}
+                    />
+                  ))}
+
+                  <div className="flex flex-wrap gap-2 pt-1">
+                    <select
+                      value={freeExercicioPick}
+                      onChange={(e) => setFreeExercicioPick(e.target.value)}
+                      className="rounded-md border border-white/15 bg-ink px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
+                    >
+                      <option value="">+ exercício livre</option>
+                      {pickerOptions.map((ex) => (
+                        <option key={ex.id} value={ex.id}>
+                          {ex.nome}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!freeExercicioPick) return
+                        setPendingExtraIds([...pendingExtraIds, freeExercicioPick])
+                        setFreeExercicioPick('')
+                      }}
+                      disabled={!freeExercicioPick}
+                      className="rounded-md bg-white/10 px-3 py-1 font-mono text-xs text-parchment disabled:opacity-50"
+                    >
+                      adicionar
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </>
