@@ -3,9 +3,16 @@ import { useSession } from './hooks/useSession'
 import { Login } from './components/Login'
 import { DailyCaptureForm } from './components/capture/DailyCaptureForm'
 import { History } from './components/history/History'
+import { HabitosConfig } from './components/habitos/HabitosConfig'
 import { supabase } from './lib/supabase'
 
-type View = 'captura' | 'historico'
+type View = 'captura' | 'historico' | 'habitos'
+
+const TABS: { view: View; label: string }[] = [
+  { view: 'captura', label: 'Captura' },
+  { view: 'historico', label: 'Histórico' },
+  { view: 'habitos', label: 'Hábitos' },
+]
 
 function App() {
   const { session, loading } = useSession()
@@ -18,28 +25,20 @@ function App() {
     <div className="min-h-svh bg-gray-50 dark:bg-gray-950">
       <header className="flex items-center justify-between border-b border-gray-200 px-4 py-3 dark:border-gray-800">
         <nav className="flex gap-4">
-          <button
-            type="button"
-            onClick={() => setView('captura')}
-            className={
-              view === 'captura'
-                ? 'text-sm font-semibold text-gray-900 dark:text-gray-100'
-                : 'text-sm text-gray-500 dark:text-gray-400'
-            }
-          >
-            Captura
-          </button>
-          <button
-            type="button"
-            onClick={() => setView('historico')}
-            className={
-              view === 'historico'
-                ? 'text-sm font-semibold text-gray-900 dark:text-gray-100'
-                : 'text-sm text-gray-500 dark:text-gray-400'
-            }
-          >
-            Histórico
-          </button>
+          {TABS.map((tab) => (
+            <button
+              key={tab.view}
+              type="button"
+              onClick={() => setView(tab.view)}
+              className={
+                view === tab.view
+                  ? 'text-sm font-semibold text-gray-900 dark:text-gray-100'
+                  : 'text-sm text-gray-500 dark:text-gray-400'
+              }
+            >
+              {tab.label}
+            </button>
+          ))}
         </nav>
         <div className="flex items-center gap-3">
           <span className="text-sm text-gray-500 dark:text-gray-400">{session.user.email}</span>
@@ -52,7 +51,9 @@ function App() {
           </button>
         </div>
       </header>
-      {view === 'captura' ? <DailyCaptureForm /> : <History />}
+      {view === 'captura' && <DailyCaptureForm />}
+      {view === 'historico' && <History />}
+      {view === 'habitos' && <HabitosConfig />}
     </div>
   )
 }

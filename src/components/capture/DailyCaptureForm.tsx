@@ -5,16 +5,20 @@ import { AcademiaBlock, emptyAcademia, type AcademiaState } from './AcademiaBloc
 import { TrabalhoBlock, emptyTrabalho, type TrabalhoState } from './TrabalhoBlock'
 import { EstudosBlock, emptyEstudos, type EstudosState } from './EstudosBlock'
 import { FinancasBlock, emptyFinancas, type FinancasState } from './FinancasBlock'
+import { HabitosBlock } from './HabitosBlock'
+import { useHabitoDefinicoes } from '../../hooks/useHabitoDefinicoes'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
 export function DailyCaptureForm() {
   const logDate = todayIsoDate()
+  const { definicoes: habitoDefinicoes, loading: habitosLoading } = useHabitoDefinicoes()
   const [overallNote, setOverallNote] = useState('')
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
   const [trabalho, setTrabalho] = useState<TrabalhoState>(emptyTrabalho)
   const [estudos, setEstudos] = useState<EstudosState>(emptyEstudos)
   const [financas, setFinancas] = useState<FinancasState>(emptyFinancas)
+  const [habitosChecked, setHabitosChecked] = useState<Record<string, boolean>>({})
   const [tomorrowPlanText, setTomorrowPlanText] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -23,7 +27,7 @@ export function DailyCaptureForm() {
     let active = true
 
     async function load() {
-      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, planRes] = await Promise.all([
+      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, habitosRes, planRes] = await Promise.all([
         supabase.from('daily_log').select('overall_note').eq('log_date', logDate).maybeSingle(),
         supabase
           .from('pillar_academia')
@@ -45,6 +49,7 @@ export function DailyCaptureForm() {
           .select('gasto_dia, categoria')
           .eq('log_date', logDate)
           .maybeSingle(),
+        supabase.from('pillar_habitos').select('itens').eq('log_date', logDate).maybeSingle(),
         supabase.from('tomorrow_plan').select('description').eq('log_date', logDate).order('created_at'),
       ])
 
@@ -56,6 +61,7 @@ export function DailyCaptureForm() {
         trabalhoRes.error ??
         estudosRes.error ??
         financasRes.error ??
+        habitosRes.error ??
         planRes.error
       if (firstError) {
         setErrorMessage(firstError.message)
@@ -100,6 +106,8 @@ export function DailyCaptureForm() {
             }
           : emptyFinancas,
       )
+      const savedItens = (habitosRes.data?.itens ?? []) as { id: string; marcado: boolean }[]
+      setHabitosChecked(Object.fromEntries(savedItens.map((item) => [item.id, item.marcado])))
       setTomorrowPlanText((planRes.data ?? []).map((row) => row.description).join('\n'))
       setState('idle')
     }
@@ -166,15 +174,37 @@ export function DailyCaptureForm() {
       { onConflict: 'log_date' },
     )
 
-    const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes] = await Promise.all([
+    const habitosAtivos = habitoDefinicoes.filter((d) => d.ativo)
+    const habitosItens = habitosAtivos.map((habito) => ({
+      id: habito.id,
+      nome: habito.nome,
+      marcado: habitosChecked[habito.id] ?? false,
+    }))
+    const habitosUpsert = supabase.from('pillar_habitos').upsert(
+      {
+        log_date: logDate,
+        itens: habitosItens,
+        total_marcados: habitosItens.filter((item) => item.marcado).length,
+        total_possivel: habitosItens.length,
+      },
+      { onConflict: 'log_date' },
+    )
+
+    const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, habitosRes] = await Promise.all([
       dailyLogUpsert,
       academiaUpsert,
       trabalhoUpsert,
       estudosUpsert,
       financasUpsert,
+      habitosUpsert,
     ])
     const upsertError =
-      dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error ?? financasRes.error
+      dailyLogRes.error ??
+      academiaRes.error ??
+      trabalhoRes.error ??
+      estudosRes.error ??
+      financasRes.error ??
+      habitosRes.error
     if (upsertError) {
       setErrorMessage(upsertError.message)
       setState('error')
@@ -202,7 +232,7 @@ export function DailyCaptureForm() {
     setState('saved')
   }
 
-  if (state === 'loading') return null
+  if (state === 'loading' || habitosLoading) return null
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-8">
@@ -226,6 +256,7 @@ export function DailyCaptureForm() {
         <TrabalhoBlock value={trabalho} onChange={setTrabalho} />
         <EstudosBlock value={estudos} onChange={setEstudos} />
         <FinancasBlock value={financas} onChange={setFinancas} />
+        <HabitosBlock definicoes={habitoDefinicoes} checked={habitosChecked} onChange={setHabitosChecked} />
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
