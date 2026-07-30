@@ -4,14 +4,17 @@ import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
 import { useHabitoDefinicoes } from '../hooks/useHabitoDefinicoes'
 import { usePillarTrend } from '../hooks/usePillarTrend'
+import { isoDateDaysAgo, todayIsoDate } from '../lib/date'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
 import { PillarTrendSection } from '../components/ui/PillarTrendSection'
 import { TrendBarChart } from '../components/ui/TrendBarChart'
 import { IconCheck } from '../components/ui/icons'
 
 const TREND_DAYS = 14
+const STREAK_WINDOW_DAYS = 60
 
 type HabitosRow = { log_date: string; total_marcados: number | null; total_possivel: number | null }
+type HabitoItem = { id: string; nome: string; marcado: boolean }
 
 function completionPercent(row: HabitosRow) {
   if (!row.total_possivel) return null
@@ -33,6 +36,45 @@ export function HabitosPage() {
   const [showConfig, setShowConfig] = useState(false)
   const [novoNome, setNovoNome] = useState('')
   const [configSaving, setConfigSaving] = useState(false)
+  const [habitoStreaks, setHabitoStreaks] = useState<Record<string, number>>({})
+
+  useEffect(() => {
+    let active = true
+    const to = todayIsoDate()
+    const from = isoDateDaysAgo(STREAK_WINDOW_DAYS - 1)
+
+    Promise.all([
+      supabase.from('daily_log').select('log_date').gte('log_date', from).lte('log_date', to),
+      supabase.from('pillar_habitos').select('log_date, itens').gte('log_date', from).lte('log_date', to),
+    ]).then(([logRes, habitosRes]) => {
+      if (!active) return
+      if (logRes.error || habitosRes.error) return
+
+      const registeredDates = new Set((logRes.data ?? []).map((r) => r.log_date))
+      const itensByDate = new Map(
+        (habitosRes.data ?? []).map((r) => [r.log_date as string, (r.itens ?? []) as HabitoItem[]]),
+      )
+      const dateList = Array.from({ length: STREAK_WINDOW_DAYS }, (_, i) => isoDateDaysAgo(STREAK_WINDOW_DAYS - 1 - i))
+
+      const streaks: Record<string, number> = {}
+      for (const habito of definicoes) {
+        let streak = 0
+        for (let i = dateList.length - 1; i >= 0; i--) {
+          const date = dateList[i]
+          if (!registeredDates.has(date)) break
+          const item = itensByDate.get(date)?.find((it) => it.id === habito.id)
+          if (!item || !item.marcado) break
+          streak++
+        }
+        streaks[habito.id] = streak
+      }
+      setHabitoStreaks(streaks)
+    })
+
+    return () => {
+      active = false
+    }
+  }, [definicoes, logDate, state])
 
   useEffect(() => {
     let active = true
@@ -181,7 +223,10 @@ export function HabitosPage() {
             onChange={(e) => setChecked({ ...checked, [habito.id]: e.target.checked })}
             className="h-5 w-5 accent-brass"
           />
-          {habito.nome}
+          <span className="flex-1">{habito.nome}</span>
+          {(habitoStreaks[habito.id] ?? 0) > 0 && (
+            <span className="font-mono text-xs text-moss">{habitoStreaks[habito.id]}d</span>
+          )}
         </label>
       ))}
 
