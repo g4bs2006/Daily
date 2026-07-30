@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { formatDateLong, todayIsoDate } from '../../lib/date'
 import { AcademiaBlock, emptyAcademia, type AcademiaState } from './AcademiaBlock'
 import { TrabalhoBlock, emptyTrabalho, type TrabalhoState } from './TrabalhoBlock'
+import { EstudosBlock, emptyEstudos, type EstudosState } from './EstudosBlock'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
@@ -11,6 +12,7 @@ export function DailyCaptureForm() {
   const [overallNote, setOverallNote] = useState('')
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
   const [trabalho, setTrabalho] = useState<TrabalhoState>(emptyTrabalho)
+  const [estudos, setEstudos] = useState<EstudosState>(emptyEstudos)
   const [tomorrowPlanText, setTomorrowPlanText] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -19,7 +21,7 @@ export function DailyCaptureForm() {
     let active = true
 
     async function load() {
-      const [dailyLogRes, academiaRes, trabalhoRes, planRes] = await Promise.all([
+      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, planRes] = await Promise.all([
         supabase.from('daily_log').select('overall_note').eq('log_date', logDate).maybeSingle(),
         supabase
           .from('pillar_academia')
@@ -31,12 +33,18 @@ export function DailyCaptureForm() {
           .select('tarefas_concluidas, horas_foco, entrega_principal')
           .eq('log_date', logDate)
           .maybeSingle(),
+        supabase
+          .from('pillar_estudos')
+          .select('minutos_estudo, materia, progresso')
+          .eq('log_date', logDate)
+          .maybeSingle(),
         supabase.from('tomorrow_plan').select('description').eq('log_date', logDate).order('created_at'),
       ])
 
       if (!active) return
 
-      const firstError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? planRes.error
+      const firstError =
+        dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error ?? planRes.error
       if (firstError) {
         setErrorMessage(firstError.message)
         setState('error')
@@ -62,6 +70,15 @@ export function DailyCaptureForm() {
               entregaPrincipal: trabalhoRes.data.entrega_principal ?? '',
             }
           : emptyTrabalho,
+      )
+      setEstudos(
+        estudosRes.data
+          ? {
+              minutosEstudo: estudosRes.data.minutos_estudo?.toString() ?? '',
+              materia: estudosRes.data.materia ?? '',
+              progresso: estudosRes.data.progresso ?? '',
+            }
+          : emptyEstudos,
       )
       setTomorrowPlanText((planRes.data ?? []).map((row) => row.description).join('\n'))
       setState('idle')
@@ -110,12 +127,23 @@ export function DailyCaptureForm() {
       { onConflict: 'log_date' },
     )
 
-    const [dailyLogRes, academiaRes, trabalhoRes] = await Promise.all([
+    const estudosUpsert = supabase.from('pillar_estudos').upsert(
+      {
+        log_date: logDate,
+        minutos_estudo: estudos.minutosEstudo ? Number(estudos.minutosEstudo) : null,
+        materia: estudos.materia || null,
+        progresso: estudos.progresso || null,
+      },
+      { onConflict: 'log_date' },
+    )
+
+    const [dailyLogRes, academiaRes, trabalhoRes, estudosRes] = await Promise.all([
       dailyLogUpsert,
       academiaUpsert,
       trabalhoUpsert,
+      estudosUpsert,
     ])
-    const upsertError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error
+    const upsertError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error
     if (upsertError) {
       setErrorMessage(upsertError.message)
       setState('error')
@@ -165,6 +193,7 @@ export function DailyCaptureForm() {
 
         <AcademiaBlock value={academia} onChange={setAcademia} />
         <TrabalhoBlock value={trabalho} onChange={setTrabalho} />
+        <EstudosBlock value={estudos} onChange={setEstudos} />
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
