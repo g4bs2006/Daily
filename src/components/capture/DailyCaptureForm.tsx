@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatDateLong, todayIsoDate } from '../../lib/date'
 import { AcademiaBlock, emptyAcademia, type AcademiaState } from './AcademiaBlock'
+import { TrabalhoBlock, emptyTrabalho, type TrabalhoState } from './TrabalhoBlock'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
@@ -9,6 +10,7 @@ export function DailyCaptureForm() {
   const logDate = todayIsoDate()
   const [overallNote, setOverallNote] = useState('')
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
+  const [trabalho, setTrabalho] = useState<TrabalhoState>(emptyTrabalho)
   const [tomorrowPlanText, setTomorrowPlanText] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -17,11 +19,16 @@ export function DailyCaptureForm() {
     let active = true
 
     async function load() {
-      const [dailyLogRes, academiaRes, planRes] = await Promise.all([
+      const [dailyLogRes, academiaRes, trabalhoRes, planRes] = await Promise.all([
         supabase.from('daily_log').select('overall_note').eq('log_date', logDate).maybeSingle(),
         supabase
           .from('pillar_academia')
           .select('treinou, duracao_min, tipo, observacao')
+          .eq('log_date', logDate)
+          .maybeSingle(),
+        supabase
+          .from('pillar_trabalho')
+          .select('tarefas_concluidas, horas_foco, entrega_principal')
           .eq('log_date', logDate)
           .maybeSingle(),
         supabase.from('tomorrow_plan').select('description').eq('log_date', logDate).order('created_at'),
@@ -29,7 +36,7 @@ export function DailyCaptureForm() {
 
       if (!active) return
 
-      const firstError = dailyLogRes.error ?? academiaRes.error ?? planRes.error
+      const firstError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? planRes.error
       if (firstError) {
         setErrorMessage(firstError.message)
         setState('error')
@@ -46,6 +53,15 @@ export function DailyCaptureForm() {
               observacao: academiaRes.data.observacao ?? '',
             }
           : emptyAcademia,
+      )
+      setTrabalho(
+        trabalhoRes.data
+          ? {
+              tarefasConcluidas: trabalhoRes.data.tarefas_concluidas?.toString() ?? '',
+              horasFoco: trabalhoRes.data.horas_foco?.toString() ?? '',
+              entregaPrincipal: trabalhoRes.data.entrega_principal ?? '',
+            }
+          : emptyTrabalho,
       )
       setTomorrowPlanText((planRes.data ?? []).map((row) => row.description).join('\n'))
       setState('idle')
@@ -84,8 +100,22 @@ export function DailyCaptureForm() {
       { onConflict: 'log_date' },
     )
 
-    const [dailyLogRes, academiaRes] = await Promise.all([dailyLogUpsert, academiaUpsert])
-    const upsertError = dailyLogRes.error ?? academiaRes.error
+    const trabalhoUpsert = supabase.from('pillar_trabalho').upsert(
+      {
+        log_date: logDate,
+        tarefas_concluidas: trabalho.tarefasConcluidas ? Number(trabalho.tarefasConcluidas) : null,
+        horas_foco: trabalho.horasFoco ? Number(trabalho.horasFoco) : null,
+        entrega_principal: trabalho.entregaPrincipal || null,
+      },
+      { onConflict: 'log_date' },
+    )
+
+    const [dailyLogRes, academiaRes, trabalhoRes] = await Promise.all([
+      dailyLogUpsert,
+      academiaUpsert,
+      trabalhoUpsert,
+    ])
+    const upsertError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error
     if (upsertError) {
       setErrorMessage(upsertError.message)
       setState('error')
@@ -134,6 +164,7 @@ export function DailyCaptureForm() {
         </div>
 
         <AcademiaBlock value={academia} onChange={setAcademia} />
+        <TrabalhoBlock value={trabalho} onChange={setTrabalho} />
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
