@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { DIA_LABELS, type PlanoDia } from '../../hooks/usePlanoSemana'
 import { type TipoTreino } from '../../hooks/useTiposTreino'
 import { type Exercicio } from '../../hooks/useExercicios'
+import { IconChevron } from '../ui/icons'
 
 type Props = {
   tipos: TipoTreino[]
@@ -23,25 +24,38 @@ export function TipoTreinoConfig({
 }: Props) {
   const [saving, setSaving] = useState(false)
   const [novoTipoNome, setNovoTipoNome] = useState('')
-  const [selectExercicio, setSelectExercicio] = useState<Record<string, string>>({})
-  const [novoExNome, setNovoExNome] = useState<Record<string, string>>({})
-  const [novoExGrupo, setNovoExGrupo] = useState<Record<string, string>>({})
+  const [expandedTipoId, setExpandedTipoId] = useState<string | null>(null)
+  const [addPanelFor, setAddPanelFor] = useState<string | null>(null)
+  const [creatingNewFor, setCreatingNewFor] = useState(false)
+  const [selectExercicio, setSelectExercicio] = useState('')
+  const [novoExNome, setNovoExNome] = useState('')
+  const [novoExGrupo, setNovoExGrupo] = useState('')
+
+  function closeAddPanel() {
+    setAddPanelFor(null)
+    setCreatingNewFor(false)
+    setSelectExercicio('')
+    setNovoExNome('')
+    setNovoExGrupo('')
+  }
 
   async function handleAddTipo() {
     const nome = novoTipoNome.trim()
     if (!nome) return
     setSaving(true)
     const ordem = tipos.length > 0 ? Math.max(...tipos.map((t) => t.ordem)) + 1 : 0
-    await supabase.from('tipo_treino').insert({ nome, ordem })
+    const { data } = await supabase.from('tipo_treino').insert({ nome, ordem }).select('id').single()
     setNovoTipoNome('')
     setSaving(false)
     onReloadTipos()
+    if (data) setExpandedTipoId(data.id)
   }
 
   async function handleRemoveTipo(id: string) {
     setSaving(true)
     await supabase.from('tipo_treino').delete().eq('id', id)
     setSaving(false)
+    if (expandedTipoId === id) setExpandedTipoId(null)
     onReloadTipos()
     onReloadPlano()
   }
@@ -55,24 +69,23 @@ export function TipoTreinoConfig({
   }
 
   async function handleAddExistente(tipoId: string) {
-    const exercicioId = selectExercicio[tipoId]
-    if (!exercicioId) return
+    if (!selectExercicio) return
     setSaving(true)
     const tipo = tipos.find((t) => t.id === tipoId)
     const ordem = (tipo?.itens.length ?? 0) + 1
-    await supabase.from('tipo_treino_exercicio').insert({ tipo_treino_id: tipoId, exercicio_id: exercicioId, ordem })
-    setSelectExercicio({ ...selectExercicio, [tipoId]: '' })
+    await supabase.from('tipo_treino_exercicio').insert({ tipo_treino_id: tipoId, exercicio_id: selectExercicio, ordem })
     setSaving(false)
+    closeAddPanel()
     onReloadTipos()
   }
 
   async function handleCreateAndAdd(tipoId: string) {
-    const nome = (novoExNome[tipoId] ?? '').trim()
+    const nome = novoExNome.trim()
     if (!nome) return
     setSaving(true)
     const { data: novoExercicio, error } = await supabase
       .from('exercicio')
-      .insert({ nome, grupo_muscular: novoExGrupo[tipoId] || null })
+      .insert({ nome, grupo_muscular: novoExGrupo || null })
       .select('id')
       .single()
     if (!error && novoExercicio) {
@@ -82,9 +95,8 @@ export function TipoTreinoConfig({
         .from('tipo_treino_exercicio')
         .insert({ tipo_treino_id: tipoId, exercicio_id: novoExercicio.id, ordem })
     }
-    setNovoExNome({ ...novoExNome, [tipoId]: '' })
-    setNovoExGrupo({ ...novoExGrupo, [tipoId]: '' })
     setSaving(false)
+    closeAddPanel()
     onReloadExercicios()
     onReloadTipos()
   }
@@ -109,136 +121,216 @@ export function TipoTreinoConfig({
   }
 
   return (
-    <div className="space-y-5 rounded-lg border border-white/10 bg-ink p-3">
-      <div className="space-y-4">
-        <p className="font-mono text-xs tracking-wide text-brass">TIPOS DE TREINO</p>
-        {tipos.map((tipo) => (
-          <div key={tipo.id} className="space-y-2 border-b border-white/10 pb-3 last:border-0 last:pb-0">
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                defaultValue={tipo.nome}
-                onBlur={(e) => handleRenameTipo(tipo.id, e.target.value)}
-                disabled={saving}
-                className="flex-1 rounded-md border border-white/15 bg-ink-2 px-2 py-1 font-body text-sm text-parchment outline-none focus:border-brass"
-              />
-              <button
-                type="button"
-                onClick={() => handleRemoveTipo(tipo.id)}
-                disabled={saving}
-                className="font-mono text-xs text-rust disabled:opacity-50"
-              >
-                remover tipo
-              </button>
-            </div>
+    <div className="space-y-6">
+      <div className="flex gap-2">
+        <input
+          type="text"
+          value={novoTipoNome}
+          onChange={(e) => setNovoTipoNome(e.target.value)}
+          placeholder="Novo tipo de treino (ex: Peito/Tríceps)"
+          className="flex-1 rounded-md border border-white/15 bg-ink-2 px-3 py-2 font-body text-sm text-parchment outline-none focus:border-brass"
+        />
+        <button
+          type="button"
+          onClick={handleAddTipo}
+          disabled={saving || !novoTipoNome.trim()}
+          className="rounded-md bg-brass px-4 py-2 font-body text-sm font-semibold text-ink disabled:opacity-50"
+        >
+          Adicionar
+        </button>
+      </div>
 
-            {tipo.itens.length > 0 && (
-              <ul className="space-y-1">
-                {tipo.itens.map((item) => (
-                  <li key={item.id} className="flex items-center justify-between font-body text-sm text-parchment">
-                    <span>{item.exercicio?.nome}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveItem(item.id)}
-                      disabled={saving}
-                      className="font-mono text-xs text-rust disabled:opacity-50"
-                    >
-                      remover
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
+      <div>
+        <p className="mb-3 font-mono text-xs tracking-wide text-brass">SEUS TIPOS</p>
+        {tipos.length === 0 ? (
+          <p className="font-mono text-xs text-parchment-dim">Nenhum tipo cadastrado ainda.</p>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            {tipos.map((tipo) => {
+              const expanded = expandedTipoId === tipo.id
+              const panelOpen = addPanelFor === tipo.id
+              const availableExercicios = exercicios.filter(
+                (ex) => !tipo.itens.some((i) => i.exercicio_id === ex.id),
+              )
+              return (
+                <div key={tipo.id} className="overflow-hidden rounded-lg border border-white/10 bg-ink-2">
+                  <button
+                    type="button"
+                    onClick={() => setExpandedTipoId(expanded ? null : tipo.id)}
+                    className="flex w-full items-center justify-between px-3.5 py-3 text-left"
+                  >
+                    <div>
+                      <p className="font-body text-[15px] font-semibold text-parchment">{tipo.nome}</p>
+                      <p className="font-mono text-xs text-parchment-dim">
+                        {tipo.itens.length} exercício{tipo.itens.length === 1 ? '' : 's'}
+                      </p>
+                    </div>
+                    <IconChevron
+                      direction="right"
+                      size={12}
+                      className={`text-parchment-dim transition-transform ${expanded ? 'rotate-90' : ''}`}
+                    />
+                  </button>
 
-            <div className="flex flex-wrap gap-2">
+                  {expanded && (
+                    <div className="border-t border-dashed border-white/10 p-3.5 pt-3">
+                      <div className="mb-3 flex flex-wrap gap-1.5">
+                        {tipo.itens.map((item) => (
+                          <span
+                            key={item.id}
+                            className="flex items-center gap-1.5 rounded-full border border-white/10 bg-ink py-1 pl-3 pr-1.5 font-body text-sm text-parchment"
+                          >
+                            {item.exercicio?.nome}
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveItem(item.id)}
+                              className="flex h-4 w-4 items-center justify-center rounded-full text-parchment-dim hover:bg-rust/20 hover:text-rust"
+                            >
+                              ×
+                            </button>
+                          </span>
+                        ))}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (panelOpen) {
+                              closeAddPanel()
+                            } else {
+                              setAddPanelFor(tipo.id)
+                              setCreatingNewFor(false)
+                            }
+                          }}
+                          className={`rounded-full border border-dashed px-3 py-1 font-mono text-xs ${
+                            panelOpen ? 'border-brass text-brass' : 'border-white/20 text-parchment-dim hover:border-brass hover:text-brass'
+                          }`}
+                        >
+                          + exercício
+                        </button>
+                      </div>
+
+                      {panelOpen && (
+                        <div className="mb-3 space-y-1.5 rounded-md bg-ink p-2.5">
+                          {!creatingNewFor ? (
+                            <>
+                              <select
+                                value={selectExercicio}
+                                onChange={(e) => setSelectExercicio(e.target.value)}
+                                className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                              >
+                                <option value="">Escolher exercício existente...</option>
+                                {availableExercicios.map((ex) => (
+                                  <option key={ex.id} value={ex.id}>
+                                    {ex.nome}
+                                  </option>
+                                ))}
+                              </select>
+                              <button
+                                type="button"
+                                onClick={() => handleAddExistente(tipo.id)}
+                                disabled={saving || !selectExercicio}
+                                className="w-full rounded-md bg-brass py-1.5 font-mono text-xs font-semibold text-ink disabled:opacity-50"
+                              >
+                                adicionar
+                              </button>
+                              {availableExercicios.length === 0 && (
+                                <p className="font-mono text-xs text-parchment-dim">
+                                  Todos os exercícios da biblioteca já estão nesse tipo.
+                                </p>
+                              )}
+                              <button
+                                type="button"
+                                onClick={() => setCreatingNewFor(true)}
+                                className="block font-mono text-xs text-parchment-dim underline hover:text-parchment"
+                              >
+                                ou criar um exercício novo
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <input
+                                type="text"
+                                value={novoExNome}
+                                onChange={(e) => setNovoExNome(e.target.value)}
+                                placeholder="nome do exercício"
+                                className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                              />
+                              <input
+                                type="text"
+                                value={novoExGrupo}
+                                onChange={(e) => setNovoExGrupo(e.target.value)}
+                                placeholder="grupo muscular (opcional)"
+                                className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => handleCreateAndAdd(tipo.id)}
+                                disabled={saving || !novoExNome.trim()}
+                                className="w-full rounded-md bg-brass py-1.5 font-mono text-xs font-semibold text-ink disabled:opacity-50"
+                              >
+                                criar e adicionar
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setCreatingNewFor(false)}
+                                className="block font-mono text-xs text-parchment-dim underline hover:text-parchment"
+                              >
+                                ou escolher um já existente
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      <div className="flex items-center justify-between gap-3 border-t border-white/10 pt-3">
+                        <input
+                          type="text"
+                          defaultValue={tipo.nome}
+                          onBlur={(e) => handleRenameTipo(tipo.id, e.target.value)}
+                          className="border-b border-dashed border-white/20 bg-transparent font-body text-sm text-parchment outline-none focus:border-brass"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveTipo(tipo.id)}
+                          className="whitespace-nowrap font-mono text-xs text-rust"
+                        >
+                          excluir tipo
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      <div>
+        <p className="mb-3 font-mono text-xs tracking-wide text-brass">
+          SUGESTÃO POR DIA DA SEMANA <span className="font-body font-normal text-parchment-dim">(opcional)</span>
+        </p>
+        <div className="flex gap-2 overflow-x-auto pb-1">
+          {DIA_LABELS.map((label, diaSemana) => (
+            <div key={diaSemana} className="min-w-[92px] shrink-0 rounded-lg border border-white/10 bg-ink-2 p-2 text-center">
+              <p className="font-mono text-[10px] tracking-wide text-parchment-dim">{label.slice(0, 3).toUpperCase()}</p>
               <select
-                value={selectExercicio[tipo.id] ?? ''}
-                onChange={(e) => setSelectExercicio({ ...selectExercicio, [tipo.id]: e.target.value })}
-                className="rounded-md border border-white/15 bg-ink-2 px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
+                defaultValue={planoPorDia[diaSemana]?.tipo_treino_id ?? ''}
+                onChange={(e) => handleSetSugestao(diaSemana, e.target.value)}
+                disabled={saving}
+                className="mt-1 w-full bg-transparent text-center font-body text-xs text-brass outline-none"
               >
-                <option value="">+ exercício existente</option>
-                {exercicios.map((ex) => (
-                  <option key={ex.id} value={ex.id}>
-                    {ex.nome}
+                <option value="" className="bg-ink-2 text-parchment-dim">
+                  —
+                </option>
+                {tipos.map((t) => (
+                  <option key={t.id} value={t.id} className="bg-ink-2 text-parchment">
+                    {t.nome}
                   </option>
                 ))}
               </select>
-              <button
-                type="button"
-                onClick={() => handleAddExistente(tipo.id)}
-                disabled={saving || !selectExercicio[tipo.id]}
-                className="rounded-md bg-white/10 px-2 py-1 font-mono text-xs text-parchment disabled:opacity-50"
-              >
-                adicionar
-              </button>
             </div>
-
-            <div className="flex flex-wrap gap-2">
-              <input
-                type="text"
-                value={novoExNome[tipo.id] ?? ''}
-                onChange={(e) => setNovoExNome({ ...novoExNome, [tipo.id]: e.target.value })}
-                placeholder="novo exercício"
-                className="rounded-md border border-white/15 bg-ink-2 px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
-              />
-              <input
-                type="text"
-                value={novoExGrupo[tipo.id] ?? ''}
-                onChange={(e) => setNovoExGrupo({ ...novoExGrupo, [tipo.id]: e.target.value })}
-                placeholder="grupo muscular"
-                className="w-28 rounded-md border border-white/15 bg-ink-2 px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
-              />
-              <button
-                type="button"
-                onClick={() => handleCreateAndAdd(tipo.id)}
-                disabled={saving || !(novoExNome[tipo.id] ?? '').trim()}
-                className="rounded-md bg-brass px-2 py-1 font-mono text-xs font-medium text-ink disabled:opacity-50"
-              >
-                criar e adicionar
-              </button>
-            </div>
-          </div>
-        ))}
-
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={novoTipoNome}
-            onChange={(e) => setNovoTipoNome(e.target.value)}
-            placeholder="Novo tipo de treino (ex: Peito/Tríceps)"
-            className="flex-1 rounded-md border border-white/15 bg-ink-2 px-3 py-1.5 font-body text-sm text-parchment outline-none focus:border-brass"
-          />
-          <button
-            type="button"
-            onClick={handleAddTipo}
-            disabled={saving || !novoTipoNome.trim()}
-            className="rounded-md bg-brass px-3 py-1.5 font-body text-sm font-medium text-ink disabled:opacity-50"
-          >
-            Adicionar
-          </button>
+          ))}
         </div>
-      </div>
-
-      <div className="space-y-2 border-t border-white/10 pt-4">
-        <p className="font-mono text-xs tracking-wide text-brass">SUGESTÃO POR DIA DA SEMANA (OPCIONAL)</p>
-        {DIA_LABELS.map((label, diaSemana) => (
-          <div key={diaSemana} className="flex items-center gap-2">
-            <span className="w-20 shrink-0 font-mono text-xs text-parchment-dim">{label.slice(0, 3).toUpperCase()}</span>
-            <select
-              defaultValue={planoPorDia[diaSemana]?.tipo_treino_id ?? ''}
-              onChange={(e) => handleSetSugestao(diaSemana, e.target.value)}
-              disabled={saving}
-              className="flex-1 rounded-md border border-white/15 bg-ink-2 px-2 py-1 font-mono text-xs text-parchment outline-none focus:border-brass"
-            >
-              <option value="">Sem sugestão</option>
-              {tipos.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-        ))}
       </div>
     </div>
   )
