@@ -3,12 +3,30 @@ import { supabase } from '../lib/supabase'
 import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
 import { useHabitoDefinicoes } from '../hooks/useHabitoDefinicoes'
+import { usePillarTrend } from '../hooks/usePillarTrend'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
+import { PillarTrendSection } from '../components/ui/PillarTrendSection'
+import { TrendBarChart } from '../components/ui/TrendBarChart'
 import { IconCheck } from '../components/ui/icons'
+
+const TREND_DAYS = 14
+
+type HabitosRow = { log_date: string; total_marcados: number | null; total_possivel: number | null }
+
+function completionPercent(row: HabitosRow) {
+  if (!row.total_possivel) return null
+  return Math.round(((row.total_marcados ?? 0) / row.total_possivel) * 100)
+}
 
 export function HabitosPage() {
   const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
   const { definicoes, loading: definicoesLoading, reload } = useHabitoDefinicoes()
+  const trend = usePillarTrend<HabitosRow>(
+    'pillar_habitos',
+    'total_marcados, total_possivel',
+    TREND_DAYS,
+    completionPercent,
+  )
   const [checked, setChecked] = useState<Record<string, boolean>>({})
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -104,6 +122,24 @@ export function HabitosPage() {
 
   const ativos = definicoes.filter((d) => d.ativo)
 
+  const completionRows = trend.rows.filter((r) => (r.total_possivel ?? 0) > 0)
+  const mediaConclusao =
+    completionRows.length > 0
+      ? Math.round(
+          completionRows.reduce((sum, r) => sum + (completionPercent(r) ?? 0), 0) / completionRows.length,
+        )
+      : 0
+  let melhorSequencia = 0
+  let atual = 0
+  for (const row of trend.rows) {
+    if (completionPercent(row) === 100) {
+      atual++
+      melhorSequencia = Math.max(melhorSequencia, atual)
+    } else {
+      atual = 0
+    }
+  }
+
   return (
     <PillarPageShell
       icon={IconCheck}
@@ -116,6 +152,21 @@ export function HabitosPage() {
       saveState={definicoesLoading ? 'loading' : state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      footer={
+        <PillarTrendSection
+          loading={trend.loading}
+          stats={[
+            { label: 'Conclusão média', value: `${mediaConclusao}%`, caption: `em ${TREND_DAYS} dias` },
+            { label: 'Melhor sequência', value: String(melhorSequencia), caption: '100% completo' },
+          ]}
+        >
+          <TrendBarChart
+            points={trend.points}
+            title={`Conclusão do checklist — últimos ${TREND_DAYS} dias`}
+            formatValue={(v) => `${v}%`}
+          />
+        </PillarTrendSection>
+      }
     >
       {ativos.length === 0 && (
         <p className="font-mono text-xs text-parchment-dim">

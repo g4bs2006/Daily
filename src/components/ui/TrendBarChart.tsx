@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { formatDateShort } from '../../lib/date'
 
-type Point = { date: string; minutos: number | null; registrado: boolean }
+export type TrendPoint = { date: string; value: number | null; registrado: boolean }
 
 type Props = {
-  points: Point[]
+  points: TrendPoint[]
+  title: string
+  formatValue?: (value: number) => string
 }
 
 const WIDTH = 600
@@ -15,10 +17,10 @@ const PAD_TOP = 20
 const PAD_BOTTOM = 8
 const BAR_GAP = 2
 
-export function StudyTrendChart({ points }: Props) {
+export function TrendBarChart({ points, title, formatValue = (v) => String(v) }: Props) {
   const [hoverIndex, setHoverIndex] = useState<number | null>(null)
 
-  const max = Math.max(1, ...points.map((p) => p.minutos ?? 0))
+  const max = Math.max(1, ...points.map((p) => p.value ?? 0))
   const plotWidth = WIDTH - PAD_LEFT - PAD_RIGHT
   const plotHeight = HEIGHT - PAD_TOP - PAD_BOTTOM
   const barSlot = plotWidth / points.length
@@ -45,13 +47,17 @@ export function StudyTrendChart({ points }: Props) {
 
       <div className="flex items-baseline justify-between">
         <p className="font-mono text-xs tracking-wide" style={{ color: 'var(--text-secondary)' }}>
-          MINUTOS DE ESTUDO — ÚLTIMOS 30 DIAS
+          {title.toUpperCase()}
         </p>
         {hoveredPoint && (
           <p className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
             <span className="capitalize">{formatDateShort(hoveredPoint.date)}</span>
             {' · '}
-            {hoveredPoint.registrado ? `${hoveredPoint.minutos ?? 0} min` : 'não registrado'}
+            {!hoveredPoint.registrado
+              ? 'dia não registrado'
+              : hoveredPoint.value === null
+                ? 'sem dado'
+                : formatValue(hoveredPoint.value)}
           </p>
         )}
       </div>
@@ -61,7 +67,7 @@ export function StudyTrendChart({ points }: Props) {
         width="100%"
         height={HEIGHT}
         role="img"
-        aria-label="Gráfico de barras dos minutos de estudo nos últimos 30 dias"
+        aria-label={title}
         onMouseLeave={() => setHoverIndex(null)}
       >
         <line
@@ -73,14 +79,15 @@ export function StudyTrendChart({ points }: Props) {
           strokeWidth={1}
         />
         {points.map((p, i) => {
-          const value = p.minutos ?? 0
+          const value = p.value ?? 0
           const barHeight = value === 0 ? 0 : Math.max(2, (value / max) * plotHeight)
           const x = PAD_LEFT + i * barSlot + (barSlot - barWidth) / 2
           const y = HEIGHT - PAD_BOTTOM - barHeight
           const isHovered = hovered === i
+          const hasValue = p.registrado && p.value !== null
           return (
             <g key={p.date}>
-              {p.registrado ? (
+              {hasValue ? (
                 <rect
                   x={x}
                   y={y}
@@ -113,7 +120,7 @@ export function StudyTrendChart({ points }: Props) {
             </g>
           )
         })}
-        {hoveredPoint?.registrado && (
+        {hoveredPoint && hoveredPoint.registrado && hoveredPoint.value !== null && (
           <text
             x={PAD_LEFT + hovered * barSlot + barSlot / 2}
             y={PAD_TOP - 6}
@@ -121,7 +128,7 @@ export function StudyTrendChart({ points }: Props) {
             fontSize={11}
             fill="var(--text-secondary)"
           >
-            {hoveredPoint.minutos ?? 0}
+            {formatValue(hoveredPoint.value)}
           </text>
         )}
       </svg>

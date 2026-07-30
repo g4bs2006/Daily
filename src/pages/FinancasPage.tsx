@@ -2,12 +2,25 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
+import { usePillarTrend } from '../hooks/usePillarTrend'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
+import { PillarTrendSection } from '../components/ui/PillarTrendSection'
+import { TrendBarChart } from '../components/ui/TrendBarChart'
 import { fieldInputClass, fieldLabelClass } from '../components/ui/InstrumentCard'
 import { IconCoin } from '../components/ui/icons'
 
+const TREND_DAYS = 14
+
+type FinancasRow = { log_date: string; gasto_dia: number | null; categoria: string | null }
+
 export function FinancasPage() {
   const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
+  const trend = usePillarTrend<FinancasRow>(
+    'pillar_financas',
+    'gasto_dia, categoria',
+    TREND_DAYS,
+    (row) => row.gasto_dia,
+  )
   const [gastoDia, setGastoDia] = useState('')
   const [categoria, setCategoria] = useState('')
   const [state, setState] = useState<SaveState>('loading')
@@ -65,6 +78,26 @@ export function FinancasPage() {
     setState('saved')
   }
 
+  const gastosRegistrados = trend.rows.filter((r) => r.gasto_dia !== null)
+  const totalGasto = gastosRegistrados.reduce((sum, r) => sum + (r.gasto_dia ?? 0), 0)
+  const mediaGasto = gastosRegistrados.length > 0 ? totalGasto / gastosRegistrados.length : 0
+  const categoriaFrequente = (() => {
+    const counts = new Map<string, number>()
+    for (const r of trend.rows) {
+      if (!r.categoria) continue
+      counts.set(r.categoria, (counts.get(r.categoria) ?? 0) + 1)
+    }
+    let top: string | null = null
+    let topCount = 0
+    for (const [categoria, count] of counts) {
+      if (count > topCount) {
+        top = categoria
+        topCount = count
+      }
+    }
+    return top
+  })()
+
   return (
     <PillarPageShell
       icon={IconCoin}
@@ -77,6 +110,22 @@ export function FinancasPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      footer={
+        <PillarTrendSection
+          loading={trend.loading}
+          stats={[
+            { label: 'Total', value: `R$ ${totalGasto.toFixed(0)}`, caption: `em ${TREND_DAYS} dias` },
+            { label: 'Média/dia', value: `R$ ${mediaGasto.toFixed(0)}` },
+            { label: 'Categoria top', value: categoriaFrequente ?? '—' },
+          ]}
+        >
+          <TrendBarChart
+            points={trend.points}
+            title={`Gasto diário — últimos ${TREND_DAYS} dias`}
+            formatValue={(v) => `R$ ${v.toFixed(2)}`}
+          />
+        </PillarTrendSection>
+      }
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">

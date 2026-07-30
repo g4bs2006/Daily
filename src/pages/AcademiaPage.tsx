@@ -2,12 +2,25 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
+import { usePillarTrend } from '../hooks/usePillarTrend'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
+import { PillarTrendSection } from '../components/ui/PillarTrendSection'
+import { TrendBarChart } from '../components/ui/TrendBarChart'
 import { fieldInputClass, fieldLabelClass } from '../components/ui/InstrumentCard'
 import { IconGear } from '../components/ui/icons'
 
+const TREND_DAYS = 14
+
+type AcademiaRow = { log_date: string; treinou: boolean; duracao_min: number | null }
+
 export function AcademiaPage() {
   const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
+  const trend = usePillarTrend<AcademiaRow>(
+    'pillar_academia',
+    'treinou, duracao_min',
+    TREND_DAYS,
+    (row) => row.duracao_min,
+  )
   const [treinou, setTreinou] = useState(false)
   const [duracaoMin, setDuracaoMin] = useState('')
   const [tipo, setTipo] = useState('')
@@ -71,6 +84,19 @@ export function AcademiaPage() {
     setState('saved')
   }
 
+  const treinos = trend.rows.filter((r) => r.treinou)
+  const mediaDuracao =
+    treinos.length > 0
+      ? Math.round(treinos.reduce((sum, r) => sum + (r.duracao_min ?? 0), 0) / treinos.length)
+      : 0
+
+  const trainedDates = new Set(treinos.map((r) => r.log_date))
+  let treinoStreak = 0
+  for (let i = trend.points.length - 1; i >= 0; i--) {
+    if (!trainedDates.has(trend.points[i].date)) break
+    treinoStreak++
+  }
+
   return (
     <PillarPageShell
       icon={IconGear}
@@ -83,6 +109,18 @@ export function AcademiaPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      footer={
+        <PillarTrendSection
+          loading={trend.loading}
+          stats={[
+            { label: 'Treinos', value: String(treinos.length), caption: `em ${TREND_DAYS} dias` },
+            { label: 'Duração média', value: `${mediaDuracao} min` },
+            { label: 'Sequência', value: String(treinoStreak), caption: treinoStreak === 1 ? 'dia' : 'dias' },
+          ]}
+        >
+          <TrendBarChart points={trend.points} title={`Duração do treino — últimos ${TREND_DAYS} dias`} formatValue={(v) => `${v} min`} />
+        </PillarTrendSection>
+      }
     >
       <label className="flex items-center gap-2 font-body text-base text-parchment">
         <input

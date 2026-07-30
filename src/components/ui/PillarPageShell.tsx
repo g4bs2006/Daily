@@ -15,6 +15,7 @@ type Props = {
   errorMessage: string | null
   onSubmit: (e: FormEvent) => void
   children: ReactNode
+  footer?: ReactNode
 }
 
 export function PillarPageShell({
@@ -29,6 +30,7 @@ export function PillarPageShell({
   errorMessage,
   onSubmit,
   children,
+  footer,
 }: Props) {
   if (saveState === 'loading') return null
 
@@ -58,6 +60,8 @@ export function PillarPageShell({
           <p className="font-mono text-xs text-rust">{errorMessage}</p>
         )}
       </form>
+
+      {footer}
     </div>
   )
 }

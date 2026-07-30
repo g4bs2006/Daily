@@ -2,12 +2,25 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { supabase } from '../lib/supabase'
 import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
+import { usePillarTrend } from '../hooks/usePillarTrend'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
+import { PillarTrendSection } from '../components/ui/PillarTrendSection'
+import { TrendBarChart } from '../components/ui/TrendBarChart'
 import { fieldInputClass, fieldLabelClass } from '../components/ui/InstrumentCard'
 import { IconBriefcase } from '../components/ui/icons'
 
+const TREND_DAYS = 14
+
+type TrabalhoRow = { log_date: string; tarefas_concluidas: number | null; horas_foco: number | null }
+
 export function TrabalhoPage() {
   const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
+  const trend = usePillarTrend<TrabalhoRow>(
+    'pillar_trabalho',
+    'tarefas_concluidas, horas_foco',
+    TREND_DAYS,
+    (row) => row.horas_foco,
+  )
   const [tarefasConcluidas, setTarefasConcluidas] = useState('')
   const [horasFoco, setHorasFoco] = useState('')
   const [entregaPrincipal, setEntregaPrincipal] = useState('')
@@ -68,6 +81,13 @@ export function TrabalhoPage() {
     setState('saved')
   }
 
+  const totalTarefas = trend.rows.reduce((sum, r) => sum + (r.tarefas_concluidas ?? 0), 0)
+  const focoRows = trend.rows.filter((r) => r.horas_foco !== null)
+  const mediaFoco =
+    focoRows.length > 0
+      ? (focoRows.reduce((sum, r) => sum + (r.horas_foco ?? 0), 0) / focoRows.length).toFixed(1)
+      : '0'
+
   return (
     <PillarPageShell
       icon={IconBriefcase}
@@ -80,6 +100,17 @@ export function TrabalhoPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      footer={
+        <PillarTrendSection
+          loading={trend.loading}
+          stats={[
+            { label: 'Tarefas', value: String(totalTarefas), caption: `em ${TREND_DAYS} dias` },
+            { label: 'Foco médio', value: `${mediaFoco} h`, caption: 'por dia' },
+          ]}
+        >
+          <TrendBarChart points={trend.points} title={`Horas de foco — últimos ${TREND_DAYS} dias`} formatValue={(v) => `${v} h`} />
+        </PillarTrendSection>
+      }
     >
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
