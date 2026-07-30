@@ -12,11 +12,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg'],
       manifest: {
-        name: 'Revisão Diária',
-        short_name: 'Revisão',
+        name: 'Diário de Bordo',
+        short_name: 'Diário',
         description: 'Fechamento de dia e planejamento pessoal',
-        theme_color: '#111827',
-        background_color: '#111827',
+        theme_color: '#141821',
+        background_color: '#141821',
         display: 'standalone',
         icons: [
           {
