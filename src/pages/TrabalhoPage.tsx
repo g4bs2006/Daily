@@ -26,6 +26,7 @@ export function TrabalhoPage() {
   const [entregaPrincipal, setEntregaPrincipal] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [recordExists, setRecordExists] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -45,6 +46,7 @@ export function TrabalhoPage() {
         setTarefasConcluidas(data?.tarefas_concluidas?.toString() ?? '')
         setHorasFoco(data?.horas_foco?.toString() ?? '')
         setEntregaPrincipal(data?.entrega_principal ?? '')
+        setRecordExists(Boolean(data))
         setState('idle')
       })
     return () => {
@@ -78,7 +80,17 @@ export function TrabalhoPage() {
       setState('error')
       return
     }
+    setRecordExists(true)
     setState('saved')
+  }
+
+  async function handleDeleteRecord() {
+    await supabase.from('pillar_trabalho').delete().eq('log_date', logDate)
+    setTarefasConcluidas('')
+    setHorasFoco('')
+    setEntregaPrincipal('')
+    setRecordExists(false)
+    setState('idle')
   }
 
   const totalTarefas = trend.rows.reduce((sum, r) => sum + (r.tarefas_concluidas ?? 0), 0)
@@ -100,6 +112,8 @@ export function TrabalhoPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      canDelete={recordExists}
+      onDelete={handleDeleteRecord}
       footer={
         <PillarTrendSection
           loading={trend.loading}

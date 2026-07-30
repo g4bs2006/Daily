@@ -37,6 +37,7 @@ export function HabitosPage() {
   const [novoNome, setNovoNome] = useState('')
   const [configSaving, setConfigSaving] = useState(false)
   const [habitoStreaks, setHabitoStreaks] = useState<Record<string, number>>({})
+  const [recordExists, setRecordExists] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -93,6 +94,7 @@ export function HabitosPage() {
         }
         const itens = (data?.itens ?? []) as { id: string; marcado: boolean }[]
         setChecked(Object.fromEntries(itens.map((item) => [item.id, item.marcado])))
+        setRecordExists(Boolean(data))
         setState('idle')
       })
     return () => {
@@ -133,7 +135,15 @@ export function HabitosPage() {
       setState('error')
       return
     }
+    setRecordExists(true)
     setState('saved')
+  }
+
+  async function handleDeleteRecord() {
+    await supabase.from('pillar_habitos').delete().eq('log_date', logDate)
+    setChecked({})
+    setRecordExists(false)
+    setState('idle')
   }
 
   async function handleAddHabito(e: FormEvent) {
@@ -158,6 +168,14 @@ export function HabitosPage() {
   async function handleToggleAtivo(id: string, ativo: boolean) {
     setConfigSaving(true)
     await supabase.from('habito_definicao').update({ ativo }).eq('id', id)
+    setConfigSaving(false)
+    reload()
+  }
+
+  async function handleRenameHabito(id: string, nome: string) {
+    if (!nome.trim()) return
+    setConfigSaving(true)
+    await supabase.from('habito_definicao').update({ nome: nome.trim() }).eq('id', id)
     setConfigSaving(false)
     reload()
   }
@@ -194,6 +212,8 @@ export function HabitosPage() {
       saveState={definicoesLoading ? 'loading' : state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      canDelete={recordExists}
+      onDelete={handleDeleteRecord}
       footer={
         <PillarTrendSection
           loading={trend.loading}
@@ -242,17 +262,21 @@ export function HabitosPage() {
         <div className="space-y-3 rounded-lg border border-white/10 bg-ink p-3">
           <ul className="space-y-2">
             {definicoes.map((habito) => (
-              <li key={habito.id} className="flex items-center justify-between">
-                <label className="flex items-center gap-2 font-body text-sm text-parchment">
-                  <input
-                    type="checkbox"
-                    checked={habito.ativo}
-                    onChange={(e) => handleToggleAtivo(habito.id, e.target.checked)}
-                    disabled={configSaving}
-                    className="h-4 w-4 accent-brass"
-                  />
-                  {habito.nome}
-                </label>
+              <li key={habito.id} className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={habito.ativo}
+                  onChange={(e) => handleToggleAtivo(habito.id, e.target.checked)}
+                  disabled={configSaving}
+                  className="h-4 w-4 accent-brass"
+                />
+                <input
+                  type="text"
+                  defaultValue={habito.nome}
+                  onBlur={(e) => handleRenameHabito(habito.id, e.target.value)}
+                  disabled={configSaving}
+                  className="flex-1 rounded-md border border-white/10 bg-ink-2 px-2 py-1 font-body text-sm text-parchment outline-none focus:border-brass"
+                />
                 <button
                   type="button"
                   onClick={() => handleRemoveHabito(habito.id)}

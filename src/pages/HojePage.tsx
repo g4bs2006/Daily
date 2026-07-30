@@ -5,6 +5,7 @@ import { useLogDate } from '../hooks/useLogDate'
 import { DateNav } from '../components/ui/DateNav'
 import { Stamp } from '../components/ui/Stamp'
 import { SealDot } from '../components/ui/SealDot'
+import { ConfirmDeleteButton } from '../components/ui/ConfirmDeleteButton'
 import { IconBriefcase, IconCheck, IconCoin, IconGear, IconPencil } from '../components/ui/icons'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
@@ -108,6 +109,21 @@ export function HojePage() {
     setState('saved')
   }
 
+  async function handleDeleteDay() {
+    await Promise.all([
+      ...PILLARS.map((p) => supabase.from(p.table).delete().eq('log_date', logDate)),
+      supabase.from('treino_serie').delete().eq('log_date', logDate),
+      supabase.from('tomorrow_plan').delete().eq('log_date', logDate),
+    ])
+    await supabase.from('daily_log').delete().eq('log_date', logDate)
+
+    setOverallNote('')
+    setTomorrowPlanText('')
+    setSealed(false)
+    setPillarStatus({})
+    setState('idle')
+  }
+
   if (state === 'loading') return null
 
   return (
@@ -170,6 +186,16 @@ export function HojePage() {
           </div>
         )}
         {state === 'error' && errorMessage && <p className="font-mono text-xs text-rust">{errorMessage}</p>}
+
+        {sealed && (
+          <div className="pt-1 text-center">
+            <ConfirmDeleteButton
+              label="excluir este dia inteiro"
+              confirmLabel="confirmar exclusão de todos os pilares"
+              onConfirm={handleDeleteDay}
+            />
+          </div>
+        )}
       </form>
     </div>
   )

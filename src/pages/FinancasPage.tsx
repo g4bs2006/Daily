@@ -14,7 +14,7 @@ import { IconCoin } from '../components/ui/icons'
 
 const TREND_DAYS = 14
 
-type FinancasRow = { log_date: string; gasto_dia: number | null; categoria: string | null }
+type FinancasRow = { log_date: string; gasto_dia: number | null; categoria_id: string | null }
 
 function currentMonthRange() {
   const today = todayIsoDate()
@@ -26,13 +26,13 @@ export function FinancasPage() {
   const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
   const trend = usePillarTrend<FinancasRow>(
     'pillar_financas',
-    'gasto_dia, categoria',
+    'gasto_dia, categoria_id',
     TREND_DAYS,
     (row) => row.gasto_dia,
   )
   const { categorias, loading: categoriasLoading, reload: reloadCategorias } = useOrcamentoCategorias()
   const [gastoDia, setGastoDia] = useState('')
-  const [categoria, setCategoria] = useState('')
+  const [categoriaId, setCategoriaId] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showConfig, setShowConfig] = useState(false)
@@ -40,13 +40,14 @@ export function FinancasPage() {
   const [novoLimite, setNovoLimite] = useState('')
   const [configSaving, setConfigSaving] = useState(false)
   const [monthRows, setMonthRows] = useState<FinancasRow[]>([])
+  const [recordExists, setRecordExists] = useState(false)
 
   useEffect(() => {
     let active = true
     setState('loading')
     supabase
       .from('pillar_financas')
-      .select('gasto_dia, categoria')
+      .select('gasto_dia, categoria_id')
       .eq('log_date', logDate)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -57,7 +58,8 @@ export function FinancasPage() {
           return
         }
         setGastoDia(data?.gasto_dia?.toString() ?? '')
-        setCategoria(data?.categoria ?? '')
+        setCategoriaId(data?.categoria_id ?? '')
+        setRecordExists(Boolean(data))
         setState('idle')
       })
     return () => {
@@ -70,7 +72,7 @@ export function FinancasPage() {
     const { from, to } = currentMonthRange()
     supabase
       .from('pillar_financas')
-      .select('log_date, gasto_dia, categoria')
+      .select('log_date, gasto_dia, categoria_id')
       .gte('log_date', from)
       .lte('log_date', to)
       .then(({ data, error }) => {
@@ -98,7 +100,7 @@ export function FinancasPage() {
       {
         log_date: logDate,
         gasto_dia: gastoDia ? Number(gastoDia) : null,
-        categoria: categoria || null,
+        categoria_id: categoriaId || null,
       },
       { onConflict: 'log_date' },
     )
@@ -107,7 +109,16 @@ export function FinancasPage() {
       setState('error')
       return
     }
+    setRecordExists(true)
     setState('saved')
+  }
+
+  async function handleDeleteRecord() {
+    await supabase.from('pillar_financas').delete().eq('log_date', logDate)
+    setGastoDia('')
+    setCategoriaId('')
+    setRecordExists(false)
+    setState('idle')
   }
 
   async function handleAddCategoria(e: FormEvent) {
@@ -121,6 +132,14 @@ export function FinancasPage() {
       .insert({ categoria: nome, limite_mensal: novoLimite ? Number(novoLimite) : null, ordem })
     setNovaCategoria('')
     setNovoLimite('')
+    setConfigSaving(false)
+    reloadCategorias()
+  }
+
+  async function handleRenomearCategoria(id: string, nome: string) {
+    if (!nome.trim()) return
+    setConfigSaving(true)
+    await supabase.from('orcamento_categoria').update({ categoria: nome.trim() }).eq('id', id)
     setConfigSaving(false)
     reloadCategorias()
   }
@@ -142,30 +161,32 @@ export function FinancasPage() {
     reloadCategorias()
   }
 
+  const categoriaById = new Map(categorias.map((c) => [c.id, c]))
+
   const gastosRegistrados = trend.rows.filter((r) => r.gasto_dia !== null)
   const totalGasto = gastosRegistrados.reduce((sum, r) => sum + (r.gasto_dia ?? 0), 0)
   const mediaGasto = gastosRegistrados.length > 0 ? totalGasto / gastosRegistrados.length : 0
   const categoriaFrequente = (() => {
     const counts = new Map<string, number>()
     for (const r of trend.rows) {
-      if (!r.categoria) continue
-      counts.set(r.categoria, (counts.get(r.categoria) ?? 0) + 1)
+      if (!r.categoria_id) continue
+      counts.set(r.categoria_id, (counts.get(r.categoria_id) ?? 0) + 1)
     }
     let top: string | null = null
     let topCount = 0
-    for (const [categoria, count] of counts) {
+    for (const [id, count] of counts) {
       if (count > topCount) {
-        top = categoria
+        top = id
         topCount = count
       }
     }
-    return top
+    return top ? categoriaById.get(top)?.categoria ?? null : null
   })()
 
   const gastoPorCategoria = new Map<string, number>()
   for (const row of monthRows) {
-    if (!row.categoria || row.gasto_dia === null) continue
-    gastoPorCategoria.set(row.categoria, (gastoPorCategoria.get(row.categoria) ?? 0) + row.gasto_dia)
+    if (!row.categoria_id || row.gasto_dia === null) continue
+    gastoPorCategoria.set(row.categoria_id, (gastoPorCategoria.get(row.categoria_id) ?? 0) + row.gasto_dia)
   }
   const categoriasComOrcamento = categorias.filter((c) => c.limite_mensal !== null)
 
@@ -181,6 +202,8 @@ export function FinancasPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      canDelete={recordExists}
+      onDelete={handleDeleteRecord}
       footer={
         <PillarTrendSection
           loading={trend.loading}
@@ -202,7 +225,7 @@ export function FinancasPage() {
                 <BudgetMeter
                   key={c.id}
                   label={c.categoria}
-                  spent={gastoPorCategoria.get(c.categoria) ?? 0}
+                  spent={gastoPorCategoria.get(c.id) ?? 0}
                   limit={c.limite_mensal ?? 0}
                 />
               ))}
@@ -226,10 +249,10 @@ export function FinancasPage() {
         </div>
         <div className="space-y-1">
           <label className={fieldLabelClass}>CATEGORIA (OPCIONAL)</label>
-          <select value={categoria} onChange={(e) => setCategoria(e.target.value)} className={fieldInputClass}>
+          <select value={categoriaId} onChange={(e) => setCategoriaId(e.target.value)} className={fieldInputClass}>
             <option value="">Sem categoria</option>
             {categorias.map((c) => (
-              <option key={c.id} value={c.categoria}>
+              <option key={c.id} value={c.id}>
                 {c.categoria}
               </option>
             ))}
@@ -250,7 +273,13 @@ export function FinancasPage() {
           <ul className="space-y-2">
             {categorias.map((c) => (
               <li key={c.id} className="flex items-center gap-2">
-                <span className="flex-1 font-body text-sm text-parchment">{c.categoria}</span>
+                <input
+                  type="text"
+                  defaultValue={c.categoria}
+                  onBlur={(e) => handleRenomearCategoria(c.id, e.target.value)}
+                  disabled={configSaving}
+                  className="flex-1 rounded-md border border-white/10 bg-ink-2 px-2 py-1 font-body text-sm text-parchment outline-none focus:border-brass"
+                />
                 <input
                   type="number"
                   inputMode="decimal"

@@ -2,6 +2,7 @@ import { usePlanoSemana } from '../../hooks/usePlanoSemana'
 import { useTiposTreino } from '../../hooks/useTiposTreino'
 import { useExercicios } from '../../hooks/useExercicios'
 import { TipoTreinoConfig } from '../../components/academia/TipoTreinoConfig'
+import { ExercicioLibrary } from '../../components/academia/ExercicioLibrary'
 
 export function AcademiaTiposPage() {
   const { planoPorDia, loading: planoLoading, reload: reloadPlano } = usePlanoSemana()
@@ -11,7 +12,7 @@ export function AcademiaTiposPage() {
   const loading = planoLoading || tiposLoading || exerciciosLoading
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 py-8 lg:px-10">
+    <div className="mx-auto w-full max-w-3xl space-y-8 px-4 py-8 lg:px-10">
       <div>
         <p className="font-mono text-xs tracking-wide text-brass">ACADEMIA</p>
         <h1 className="font-display text-2xl text-parchment">Tipos de treino</h1>
@@ -22,14 +23,20 @@ export function AcademiaTiposPage() {
       </div>
 
       {!loading && (
-        <TipoTreinoConfig
-          tipos={tipos}
-          exercicios={exercicios}
-          planoPorDia={planoPorDia}
-          onReloadTipos={reloadTipos}
-          onReloadExercicios={reloadExercicios}
-          onReloadPlano={reloadPlano}
-        />
+        <>
+          <TipoTreinoConfig
+            tipos={tipos}
+            exercicios={exercicios}
+            planoPorDia={planoPorDia}
+            onReloadTipos={reloadTipos}
+            onReloadExercicios={reloadExercicios}
+            onReloadPlano={reloadPlano}
+          />
+
+          <div className="border-t border-white/10 pt-6">
+            <ExercicioLibrary exercicios={exercicios} onReload={reloadExercicios} />
+          </div>
+        </>
       )}
     </div>
   )

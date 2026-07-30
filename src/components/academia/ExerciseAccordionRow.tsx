@@ -10,18 +10,45 @@ type Props = {
   sets: LoggedSet[]
   defaultOpen?: boolean
   onAddSet: (reps: number | null, carga: number | null) => void
+  onUpdateSet: (id: string, reps: number | null, carga: number | null) => void
   onRemoveSet: (id: string) => void
 }
 
-export function ExerciseAccordionRow({ nome, metaLabel, sets, defaultOpen = false, onAddSet, onRemoveSet }: Props) {
+export function ExerciseAccordionRow({
+  nome,
+  metaLabel,
+  sets,
+  defaultOpen = false,
+  onAddSet,
+  onUpdateSet,
+  onRemoveSet,
+}: Props) {
   const [open, setOpen] = useState(defaultOpen)
   const [reps, setReps] = useState('')
   const [carga, setCarga] = useState('')
+  const [editingId, setEditingId] = useState<string | null>(null)
   const done = sets.length > 0
 
-  function handleAdd() {
+  function startEdit(set: LoggedSet) {
+    setEditingId(set.id)
+    setReps(set.reps?.toString() ?? '')
+    setCarga(set.carga_kg?.toString() ?? '')
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setReps('')
+    setCarga('')
+  }
+
+  function handleSubmitForm() {
     if (!reps && !carga) return
-    onAddSet(reps ? Number(reps) : null, carga ? Number(carga) : null)
+    if (editingId) {
+      onUpdateSet(editingId, reps ? Number(reps) : null, carga ? Number(carga) : null)
+    } else {
+      onAddSet(reps ? Number(reps) : null, carga ? Number(carga) : null)
+    }
+    setEditingId(null)
     setReps('')
     setCarga('')
   }
@@ -58,9 +85,13 @@ export function ExerciseAccordionRow({ nome, metaLabel, sets, defaultOpen = fals
               {sets.map((set) => (
                 <span
                   key={set.id}
-                  className="flex items-center gap-1.5 rounded-full bg-brass/10 px-2.5 py-1 font-mono text-xs text-brass"
+                  className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 font-mono text-xs ${
+                    editingId === set.id ? 'bg-brass/25 text-brass' : 'bg-brass/10 text-brass'
+                  }`}
                 >
-                  {set.reps ?? '—'}×{set.carga_kg ?? '—'}kg
+                  <button type="button" onClick={() => startEdit(set)}>
+                    {set.reps ?? '—'}×{set.carga_kg ?? '—'}kg
+                  </button>
                   <button type="button" onClick={() => onRemoveSet(set.id)} className="text-parchment-dim">
                     ×
                   </button>
@@ -68,7 +99,7 @@ export function ExerciseAccordionRow({ nome, metaLabel, sets, defaultOpen = fals
               ))}
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <input
               type="number"
               inputMode="numeric"
@@ -90,11 +121,16 @@ export function ExerciseAccordionRow({ nome, metaLabel, sets, defaultOpen = fals
             />
             <button
               type="button"
-              onClick={handleAdd}
+              onClick={handleSubmitForm}
               className="rounded-md bg-brass px-3 py-1.5 font-mono text-xs font-semibold text-ink"
             >
-              + série
+              {editingId ? 'salvar' : '+ série'}
             </button>
+            {editingId && (
+              <button type="button" onClick={cancelEdit} className="font-mono text-xs text-parchment-dim">
+                cancelar
+              </button>
+            )}
           </div>
         </div>
       )}

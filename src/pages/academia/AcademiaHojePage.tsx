@@ -39,6 +39,7 @@ export function AcademiaHojePage() {
   const [tipoTreinoId, setTipoTreinoId] = useState<string | null>(null)
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [recordExists, setRecordExists] = useState(false)
 
   const [setsForDate, setSetsForDate] = useState<Record<string, LoggedSet[]>>({})
   const [pendingExtraIds, setPendingExtraIds] = useState<string[]>([])
@@ -67,6 +68,7 @@ export function AcademiaHojePage() {
         setObservacao(data?.observacao ?? '')
         setTipoTreinoId(data ? data.tipo_treino_id ?? '' : null)
         setModo(data?.tipo ? 'cardio' : 'musculacao')
+        setRecordExists(Boolean(data))
         setState('idle')
       })
     return () => {
@@ -128,6 +130,7 @@ export function AcademiaHojePage() {
       setState('error')
       return
     }
+    setRecordExists(true)
     setState('saved')
   }
 
@@ -138,6 +141,23 @@ export function AcademiaHojePage() {
     await supabase
       .from('treino_serie')
       .insert({ log_date: logDate, exercicio_id: exercicioId, ordem_serie: ordem, reps, carga_kg: carga })
+    loadSets()
+  }
+
+  async function handleDeleteRecord() {
+    await supabase.from('treino_serie').delete().eq('log_date', logDate)
+    await supabase.from('pillar_academia').delete().eq('log_date', logDate)
+    setTreinou(false)
+    setDuracaoMin('')
+    setTipo('')
+    setTipoTreinoId('')
+    setRecordExists(false)
+    setSetsForDate({})
+    setState('idle')
+  }
+
+  async function handleUpdateSet(id: string, reps: number | null, carga: number | null) {
+    await supabase.from('treino_serie').update({ reps, carga_kg: carga }).eq('id', id)
     loadSets()
   }
 
@@ -177,6 +197,8 @@ export function AcademiaHojePage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      canDelete={recordExists}
+      onDelete={handleDeleteRecord}
       footer={
         <PillarTrendSection
           loading={trend.loading}
@@ -281,6 +303,7 @@ export function AcademiaHojePage() {
                       }
                       sets={setsForDate[item.exercicio_id] ?? []}
                       onAddSet={(reps, carga) => handleAddSet(item.exercicio_id, reps, carga)}
+                      onUpdateSet={handleUpdateSet}
                       onRemoveSet={handleRemoveSet}
                     />
                   ))}
@@ -292,6 +315,7 @@ export function AcademiaHojePage() {
                       sets={setsForDate[id] ?? []}
                       defaultOpen
                       onAddSet={(reps, carga) => handleAddSet(id, reps, carga)}
+                      onUpdateSet={handleUpdateSet}
                       onRemoveSet={handleRemoveSet}
                     />
                   ))}

@@ -30,6 +30,11 @@ export function TipoTreinoConfig({
   const [selectExercicio, setSelectExercicio] = useState('')
   const [novoExNome, setNovoExNome] = useState('')
   const [novoExGrupo, setNovoExGrupo] = useState('')
+  const [novoSeries, setNovoSeries] = useState('')
+  const [novoReps, setNovoReps] = useState('')
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editSeries, setEditSeries] = useState('')
+  const [editReps, setEditReps] = useState('')
 
   function closeAddPanel() {
     setAddPanelFor(null)
@@ -37,6 +42,8 @@ export function TipoTreinoConfig({
     setSelectExercicio('')
     setNovoExNome('')
     setNovoExGrupo('')
+    setNovoSeries('')
+    setNovoReps('')
   }
 
   async function handleAddTipo() {
@@ -73,7 +80,13 @@ export function TipoTreinoConfig({
     setSaving(true)
     const tipo = tipos.find((t) => t.id === tipoId)
     const ordem = (tipo?.itens.length ?? 0) + 1
-    await supabase.from('tipo_treino_exercicio').insert({ tipo_treino_id: tipoId, exercicio_id: selectExercicio, ordem })
+    await supabase.from('tipo_treino_exercicio').insert({
+      tipo_treino_id: tipoId,
+      exercicio_id: selectExercicio,
+      ordem,
+      series_alvo: novoSeries ? Number(novoSeries) : null,
+      reps_alvo: novoReps ? Number(novoReps) : null,
+    })
     setSaving(false)
     closeAddPanel()
     onReloadTipos()
@@ -91,9 +104,13 @@ export function TipoTreinoConfig({
     if (!error && novoExercicio) {
       const tipo = tipos.find((t) => t.id === tipoId)
       const ordem = (tipo?.itens.length ?? 0) + 1
-      await supabase
-        .from('tipo_treino_exercicio')
-        .insert({ tipo_treino_id: tipoId, exercicio_id: novoExercicio.id, ordem })
+      await supabase.from('tipo_treino_exercicio').insert({
+        tipo_treino_id: tipoId,
+        exercicio_id: novoExercicio.id,
+        ordem,
+        series_alvo: novoSeries ? Number(novoSeries) : null,
+        reps_alvo: novoReps ? Number(novoReps) : null,
+      })
     }
     setSaving(false)
     closeAddPanel()
@@ -105,6 +122,26 @@ export function TipoTreinoConfig({
     setSaving(true)
     await supabase.from('tipo_treino_exercicio').delete().eq('id', itemId)
     setSaving(false)
+    onReloadTipos()
+  }
+
+  function startEditItem(itemId: string, series: number | null, reps: number | null) {
+    setEditingItemId(itemId)
+    setEditSeries(series?.toString() ?? '')
+    setEditReps(reps?.toString() ?? '')
+  }
+
+  async function handleSaveEditItem(itemId: string) {
+    setSaving(true)
+    await supabase
+      .from('tipo_treino_exercicio')
+      .update({
+        series_alvo: editSeries ? Number(editSeries) : null,
+        reps_alvo: editReps ? Number(editReps) : null,
+      })
+      .eq('id', itemId)
+    setSaving(false)
+    setEditingItemId(null)
     onReloadTipos()
   }
 
@@ -180,7 +217,18 @@ export function TipoTreinoConfig({
                             key={item.id}
                             className="flex items-center gap-1.5 rounded-full border border-white/10 bg-ink py-1 pl-3 pr-1.5 font-body text-sm text-parchment"
                           >
-                            {item.exercicio?.nome}
+                            <button
+                              type="button"
+                              onClick={() => startEditItem(item.id, item.series_alvo, item.reps_alvo)}
+                              className="hover:text-brass"
+                            >
+                              {item.exercicio?.nome}
+                              {(item.series_alvo || item.reps_alvo) && (
+                                <span className="ml-1 font-mono text-xs text-parchment-dim">
+                                  · {item.series_alvo ?? '?'}×{item.reps_alvo ?? '?'}
+                                </span>
+                              )}
+                            </button>
                             <button
                               type="button"
                               onClick={() => handleRemoveItem(item.id)}
@@ -208,6 +256,54 @@ export function TipoTreinoConfig({
                         </button>
                       </div>
 
+                      {tipo.itens.map(
+                        (item) =>
+                          editingItemId === item.id && (
+                            <div key={item.id} className="mb-3 space-y-1.5 rounded-md bg-ink p-2.5">
+                              <p className="font-mono text-xs text-parchment-dim">
+                                Alvo para <span className="text-parchment">{item.exercicio?.nome}</span>
+                              </p>
+                              <div className="flex gap-2">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={editSeries}
+                                  onChange={(e) => setEditSeries(e.target.value)}
+                                  placeholder="séries"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={editReps}
+                                  onChange={(e) => setEditReps(e.target.value)}
+                                  placeholder="reps"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                              </div>
+                              <div className="flex gap-2">
+                                <button
+                                  type="button"
+                                  onClick={() => handleSaveEditItem(item.id)}
+                                  disabled={saving}
+                                  className="flex-1 rounded-md bg-brass py-1.5 font-mono text-xs font-semibold text-ink disabled:opacity-50"
+                                >
+                                  salvar
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingItemId(null)}
+                                  className="flex-1 rounded-md bg-white/10 py-1.5 font-mono text-xs text-parchment"
+                                >
+                                  cancelar
+                                </button>
+                              </div>
+                            </div>
+                          ),
+                      )}
+
                       {panelOpen && (
                         <div className="mb-3 space-y-1.5 rounded-md bg-ink p-2.5">
                           {!creatingNewFor ? (
@@ -224,6 +320,26 @@ export function TipoTreinoConfig({
                                   </option>
                                 ))}
                               </select>
+                              <div className="flex gap-2">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={novoSeries}
+                                  onChange={(e) => setNovoSeries(e.target.value)}
+                                  placeholder="séries alvo"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={novoReps}
+                                  onChange={(e) => setNovoReps(e.target.value)}
+                                  placeholder="reps alvo"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => handleAddExistente(tipo.id)}
@@ -261,6 +377,26 @@ export function TipoTreinoConfig({
                                 placeholder="grupo muscular (opcional)"
                                 className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
                               />
+                              <div className="flex gap-2">
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={novoSeries}
+                                  onChange={(e) => setNovoSeries(e.target.value)}
+                                  placeholder="séries alvo"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                                <input
+                                  type="number"
+                                  inputMode="numeric"
+                                  min={0}
+                                  value={novoReps}
+                                  onChange={(e) => setNovoReps(e.target.value)}
+                                  placeholder="reps alvo"
+                                  className="w-full rounded-md border border-white/15 bg-ink-2 px-2 py-1.5 font-mono text-xs text-parchment outline-none focus:border-brass"
+                                />
+                              </div>
                               <button
                                 type="button"
                                 onClick={() => handleCreateAndAdd(tipo.id)}

@@ -1,5 +1,6 @@
 import type { ComponentType, FormEvent, ReactNode } from 'react'
 import { DateNav } from './DateNav'
+import { ConfirmDeleteButton } from './ConfirmDeleteButton'
 
 export type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
@@ -16,6 +17,8 @@ type Props = {
   onSubmit: (e: FormEvent) => void
   children: ReactNode
   footer?: ReactNode
+  canDelete?: boolean
+  onDelete?: () => void
 }
 
 export function PillarPageShell({
@@ -31,6 +34,8 @@ export function PillarPageShell({
   onSubmit,
   children,
   footer,
+  canDelete,
+  onDelete,
 }: Props) {
   if (saveState === 'loading') return null
 
@@ -59,6 +64,16 @@ export function PillarPageShell({
           {saveState === 'saved' && <p className="text-center font-mono text-xs text-moss">registrado ✓</p>}
           {saveState === 'error' && errorMessage && (
             <p className="font-mono text-xs text-rust">{errorMessage}</p>
+          )}
+
+          {canDelete && onDelete && (
+            <div className="pt-1 text-center">
+              <ConfirmDeleteButton
+                label="excluir registro deste dia"
+                confirmLabel="confirmar exclusão"
+                onConfirm={onDelete}
+              />
+            </div>
           )}
         </form>
 

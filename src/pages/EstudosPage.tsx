@@ -26,6 +26,7 @@ export function EstudosPage() {
   const [progresso, setProgresso] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [recordExists, setRecordExists] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -45,6 +46,7 @@ export function EstudosPage() {
         setMinutosEstudo(data?.minutos_estudo?.toString() ?? '')
         setMateria(data?.materia ?? '')
         setProgresso(data?.progresso ?? '')
+        setRecordExists(Boolean(data))
         setState('idle')
       })
     return () => {
@@ -78,7 +80,17 @@ export function EstudosPage() {
       setState('error')
       return
     }
+    setRecordExists(true)
     setState('saved')
+  }
+
+  async function handleDeleteRecord() {
+    await supabase.from('pillar_estudos').delete().eq('log_date', logDate)
+    setMinutosEstudo('')
+    setMateria('')
+    setProgresso('')
+    setRecordExists(false)
+    setState('idle')
   }
 
   const totalMinutos = trend.rows.reduce((sum, r) => sum + (r.minutos_estudo ?? 0), 0)
@@ -97,6 +109,8 @@ export function EstudosPage() {
       saveState={state}
       errorMessage={errorMessage}
       onSubmit={handleSubmit}
+      canDelete={recordExists}
+      onDelete={handleDeleteRecord}
       footer={
         <PillarTrendSection
           loading={trend.loading}
