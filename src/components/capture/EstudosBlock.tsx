@@ -1,3 +1,6 @@
+import { InstrumentCard, fieldInputClass, fieldLabelClass } from '../ui/InstrumentCard'
+import { IconPencil } from '../ui/icons'
+
 export type EstudosState = {
   minutosEstudo: string
   materia: string
@@ -17,41 +20,39 @@ type Props = {
 
 export function EstudosBlock({ value, onChange }: Props) {
   return (
-    <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-      <legend className="px-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Estudos</legend>
-
+    <InstrumentCard icon={IconPencil} title="Estudos">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Minutos estudados</label>
+          <label className={fieldLabelClass}>MINUTOS ESTUDADOS</label>
           <input
             type="number"
             inputMode="numeric"
             min={0}
             value={value.minutosEstudo}
             onChange={(e) => onChange({ ...value, minutosEstudo: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className={fieldInputClass}
           />
         </div>
         <div className="space-y-1">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Matéria</label>
+          <label className={fieldLabelClass}>MATÉRIA</label>
           <input
             type="text"
             value={value.materia}
             onChange={(e) => onChange({ ...value, materia: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className={fieldInputClass}
           />
         </div>
       </div>
 
       <div className="space-y-1">
-        <label className="text-sm text-gray-600 dark:text-gray-400">Progresso (opcional)</label>
+        <label className={fieldLabelClass}>PROGRESSO (OPCIONAL)</label>
         <input
           type="text"
           value={value.progresso}
           onChange={(e) => onChange({ ...value, progresso: e.target.value })}
-          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className={fieldInputClass}
         />
       </div>
-    </fieldset>
+    </InstrumentCard>
   )
 }

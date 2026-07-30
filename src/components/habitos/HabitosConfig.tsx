@@ -37,23 +37,26 @@ export function HabitosConfig() {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-8">
-      <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Configurar hábitos</h1>
+      <div>
+        <p className="font-mono text-xs tracking-wide text-brass">CHECKLIST CONFIGURÁVEL</p>
+        <h1 className="font-display text-2xl text-parchment">Hábitos</h1>
+      </div>
 
-      {errorMessage && <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>}
+      {errorMessage && <p className="font-mono text-xs text-rust">{errorMessage}</p>}
 
       <ul className="space-y-2">
         {definicoes.map((habito) => (
           <li
             key={habito.id}
-            className="flex items-center justify-between rounded-lg border border-gray-200 p-3 dark:border-gray-800"
+            className="flex items-center justify-between rounded-lg border border-white/10 bg-ink-2 p-3"
           >
-            <label className="flex items-center gap-2 text-base text-gray-800 dark:text-gray-200">
+            <label className="flex items-center gap-2 font-body text-base text-parchment">
               <input
                 type="checkbox"
                 checked={habito.ativo}
                 onChange={(e) => handleToggleAtivo(habito.id, e.target.checked)}
                 disabled={saving}
-                className="h-5 w-5"
+                className="h-5 w-5 accent-brass"
               />
               {habito.nome}
             </label>
@@ -61,14 +64,14 @@ export function HabitosConfig() {
               type="button"
               onClick={() => handleRemove(habito.id)}
               disabled={saving}
-              className="text-sm text-red-600 disabled:opacity-50 dark:text-red-400"
+              className="font-mono text-xs text-rust disabled:opacity-50"
             >
-              Remover
+              remover
             </button>
           </li>
         ))}
         {definicoes.length === 0 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400">Nenhum hábito configurado ainda.</p>
+          <p className="font-mono text-xs text-parchment-dim">Nenhum hábito configurado ainda.</p>
         )}
       </ul>
 
@@ -78,12 +81,12 @@ export function HabitosConfig() {
           value={novoNome}
           onChange={(e) => setNovoNome(e.target.value)}
           placeholder="Novo hábito"
-          className="flex-1 rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+          className="flex-1 rounded-md border border-white/15 bg-ink-2 px-3 py-2 font-body text-base text-parchment outline-none focus:border-brass"
         />
         <button
           type="submit"
           disabled={saving || !novoNome.trim()}
-          className="rounded-lg bg-gray-900 px-4 py-2 text-base font-medium text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+          className="rounded-md bg-brass px-4 py-2 font-body text-base font-medium text-ink disabled:opacity-50"
         >
           Adicionar
         </button>

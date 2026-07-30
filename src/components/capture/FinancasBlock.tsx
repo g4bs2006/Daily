@@ -1,3 +1,6 @@
+import { InstrumentCard, fieldInputClass, fieldLabelClass } from '../ui/InstrumentCard'
+import { IconCoin } from '../ui/icons'
+
 export type FinancasState = {
   gastoDia: string
   categoria: string
@@ -15,12 +18,10 @@ type Props = {
 
 export function FinancasBlock({ value, onChange }: Props) {
   return (
-    <fieldset className="space-y-3 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-      <legend className="px-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Finanças</legend>
-
+    <InstrumentCard icon={IconCoin} title="Finanças">
       <div className="grid grid-cols-2 gap-3">
         <div className="space-y-1">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Gasto do dia (R$)</label>
+          <label className={fieldLabelClass}>GASTO DO DIA (R$)</label>
           <input
             type="number"
             inputMode="decimal"
@@ -28,19 +29,19 @@ export function FinancasBlock({ value, onChange }: Props) {
             step={0.01}
             value={value.gastoDia}
             onChange={(e) => onChange({ ...value, gastoDia: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className={fieldInputClass}
           />
         </div>
         <div className="space-y-1">
-          <label className="text-sm text-gray-600 dark:text-gray-400">Categoria (opcional)</label>
+          <label className={fieldLabelClass}>CATEGORIA (OPCIONAL)</label>
           <input
             type="text"
             value={value.categoria}
             onChange={(e) => onChange({ ...value, categoria: e.target.value })}
-            className="w-full rounded-lg border border-gray-300 px-3 py-2 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className={fieldInputClass}
           />
         </div>
       </div>
-    </fieldset>
+    </InstrumentCard>
   )
 }

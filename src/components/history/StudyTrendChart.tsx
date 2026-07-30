@@ -32,45 +32,23 @@ export function StudyTrendChart({ points }: Props) {
     <div className="viz-root">
       <style>{`
         .viz-root {
-          color-scheme: light;
-          --surface-1: #fcfcfb;
-          --text-primary: #0b0b0b;
-          --text-secondary: #52514e;
-          --text-muted: #898781;
-          --gridline: #e1e0d9;
-          --baseline: #c3c2b7;
-          --series-1: #2a78d6;
-        }
-        @media (prefers-color-scheme: dark) {
-          :root:where(:not([data-theme="light"])) .viz-root {
-            color-scheme: dark;
-            --surface-1: #1a1a19;
-            --text-primary: #ffffff;
-            --text-secondary: #c3c2b7;
-            --text-muted: #898781;
-            --gridline: #2c2c2a;
-            --baseline: #383835;
-            --series-1: #3987e5;
-          }
-        }
-        :root[data-theme="dark"] .viz-root {
           color-scheme: dark;
-          --surface-1: #1a1a19;
-          --text-primary: #ffffff;
-          --text-secondary: #c3c2b7;
-          --text-muted: #898781;
-          --gridline: #2c2c2a;
-          --baseline: #383835;
-          --series-1: #3987e5;
+          --surface-1: #1c2230;
+          --text-primary: #f6f1e4;
+          --text-secondary: #cfc9b8;
+          --text-muted: #6b6f7d;
+          --gridline: #2c3345;
+          --baseline: #3a4258;
+          --series-1: #c8933f;
         }
       `}</style>
 
       <div className="flex items-baseline justify-between">
-        <p className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>
-          Minutos de estudo — últimos 30 dias
+        <p className="font-mono text-xs tracking-wide" style={{ color: 'var(--text-secondary)' }}>
+          MINUTOS DE ESTUDO — ÚLTIMOS 30 DIAS
         </p>
         {hoveredPoint && (
-          <p className="text-sm" style={{ color: 'var(--text-secondary)' }}>
+          <p className="font-mono text-xs" style={{ color: 'var(--text-secondary)' }}>
             <span className="capitalize">{formatDateShort(hoveredPoint.date)}</span>
             {' · '}
             {hoveredPoint.registrado ? `${hoveredPoint.minutos ?? 0} min` : 'não registrado'}

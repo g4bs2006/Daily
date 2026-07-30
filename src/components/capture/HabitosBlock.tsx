@@ -1,4 +1,6 @@
 import type { HabitoDefinicao } from '../../hooks/useHabitoDefinicoes'
+import { InstrumentCard } from '../ui/InstrumentCard'
+import { IconCheck } from '../ui/icons'
 
 type Props = {
   definicoes: HabitoDefinicao[]
@@ -12,23 +14,21 @@ export function HabitosBlock({ definicoes, checked, onChange }: Props) {
   if (ativos.length === 0) return null
 
   return (
-    <fieldset className="space-y-2 rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-      <legend className="px-1 text-sm font-semibold text-gray-900 dark:text-gray-100">Hábitos</legend>
-
+    <InstrumentCard icon={IconCheck} title="Hábitos">
       {ativos.map((habito) => (
         <label
           key={habito.id}
-          className="flex items-center gap-2 text-base text-gray-800 dark:text-gray-200"
+          className="flex items-center gap-2 font-body text-base text-parchment"
         >
           <input
             type="checkbox"
             checked={checked[habito.id] ?? false}
             onChange={(e) => onChange({ ...checked, [habito.id]: e.target.checked })}
-            className="h-5 w-5"
+            className="h-5 w-5 accent-brass"
           />
           {habito.nome}
         </label>
       ))}
-    </fieldset>
+    </InstrumentCard>
   )
 }

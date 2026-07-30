@@ -7,6 +7,7 @@ import { EstudosBlock, emptyEstudos, type EstudosState } from './EstudosBlock'
 import { FinancasBlock, emptyFinancas, type FinancasState } from './FinancasBlock'
 import { HabitosBlock } from './HabitosBlock'
 import { useHabitoDefinicoes } from '../../hooks/useHabitoDefinicoes'
+import { Stamp } from '../ui/Stamp'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
@@ -19,6 +20,7 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
   const logDate = logDateProp ?? todayIsoDate()
   const isToday = logDate === todayIsoDate()
   const { definicoes: habitoDefinicoes, loading: habitosLoading } = useHabitoDefinicoes()
+  const [entryNumber, setEntryNumber] = useState<number | null>(null)
   const [overallNote, setOverallNote] = useState('')
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
   const [trabalho, setTrabalho] = useState<TrabalhoState>(emptyTrabalho)
@@ -33,7 +35,9 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
     let active = true
 
     async function load() {
-      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, habitosRes, planRes] = await Promise.all([
+      const [countRes, dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, habitosRes, planRes] =
+        await Promise.all([
+        supabase.from('daily_log').select('id', { count: 'exact', head: true }).lte('log_date', logDate),
         supabase.from('daily_log').select('overall_note').eq('log_date', logDate).maybeSingle(),
         supabase
           .from('pillar_academia')
@@ -62,6 +66,7 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
       if (!active) return
 
       const firstError =
+        countRes.error ??
         dailyLogRes.error ??
         academiaRes.error ??
         trabalhoRes.error ??
@@ -75,6 +80,7 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
         return
       }
 
+      setEntryNumber((countRes.count ?? 0) + (dailyLogRes.data ? 0 : 1))
       setOverallNote(dailyLogRes.data?.overall_note ?? '')
       setAcademia(
         academiaRes.data
@@ -242,33 +248,34 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
   if (state === 'loading' || habitosLoading) return null
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-8">
+    <div className="mx-auto w-full max-w-lg space-y-5 px-4 py-8">
       <div className="flex items-baseline justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {isToday ? 'Fechamento do dia' : 'Editando dia passado'}
-          </h1>
-          <p className="text-sm capitalize text-gray-500 dark:text-gray-400">{formatDateLong(logDate)}</p>
+          <p className="font-mono text-xs tracking-wide text-brass">
+            ENTRADA Nº {String(entryNumber ?? 0).padStart(3, '0')}
+          </p>
+          <h1 className="font-display text-2xl capitalize text-parchment">{formatDateLong(logDate)}</h1>
+          {!isToday && <p className="font-mono text-xs text-rust">editando dia passado</p>}
         </div>
         {!isToday && onDone && (
           <button
             type="button"
             onClick={onDone}
-            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+            className="font-mono text-xs text-parchment-dim hover:text-parchment"
           >
-            Voltar
+            ‹ voltar
           </button>
         )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Como foi o dia?</label>
+          <label className="font-mono text-xs tracking-wide text-parchment-dim">COMO FOI O DIA?</label>
           <textarea
             value={overallNote}
             onChange={(e) => setOverallNote(e.target.value)}
             rows={4}
-            className="w-full resize-none rounded-lg border border-gray-300 p-3 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
           />
         </div>
 
@@ -279,29 +286,31 @@ export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
         <HabitosBlock definicoes={habitoDefinicoes} checked={habitosChecked} onChange={setHabitosChecked} />
 
         <div className="space-y-1">
-          <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Planejamento para amanhã (até 3 itens, um por linha)
+          <label className="font-mono text-xs tracking-wide text-parchment-dim">
+            PLANEJAMENTO PARA AMANHÃ (ATÉ 3 ITENS, UM POR LINHA)
           </label>
           <textarea
             value={tomorrowPlanText}
             onChange={(e) => setTomorrowPlanText(e.target.value)}
             rows={3}
-            className="w-full resize-none rounded-lg border border-gray-300 p-3 text-base outline-none focus:border-gray-500 dark:border-gray-700 dark:bg-gray-800 dark:text-gray-100"
+            className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
           />
         </div>
 
         <button
           type="submit"
           disabled={state === 'saving'}
-          className="w-full rounded-lg bg-gray-900 py-2 text-base font-medium text-white disabled:opacity-50 dark:bg-gray-100 dark:text-gray-900"
+          className="w-full rounded-md bg-brass py-2.5 font-body text-base font-medium text-ink disabled:opacity-50"
         >
-          {state === 'saving' ? 'Salvando...' : 'Salvar'}
+          {state === 'saving' ? 'Selando...' : 'Selar o dia'}
         </button>
 
-        {state === 'saved' && <p className="text-sm text-green-600 dark:text-green-400">Salvo.</p>}
-        {state === 'error' && errorMessage && (
-          <p className="text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+        {state === 'saved' && (
+          <div className="flex items-center justify-center py-2">
+            <Stamp ringText="DIA REGISTRADO •" value="OK" caption="SELADO" tone="moss" size={88} />
+          </div>
         )}
+        {state === 'error' && errorMessage && <p className="font-mono text-xs text-rust">{errorMessage}</p>}
       </form>
     </div>
   )

@@ -2,6 +2,9 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { formatDateShort, isoDateDaysAgo, todayIsoDate } from '../../lib/date'
 import { StudyTrendChart } from './StudyTrendChart'
+import { Stamp } from '../ui/Stamp'
+import { SealDot } from '../ui/SealDot'
+import { IconGear } from '../ui/icons'
 
 const DAYS = 7
 const STUDY_TREND_DAYS = 30
@@ -56,7 +59,7 @@ export function History({ onEditDay }: Props) {
 
   if (loading) return null
   if (errorMessage) {
-    return <p className="p-4 text-sm text-red-600 dark:text-red-400">{errorMessage}</p>
+    return <p className="p-4 font-mono text-xs text-rust">{errorMessage}</p>
   }
 
   const days = Array.from({ length: DAYS }, (_, i) => isoDateDaysAgo(DAYS - 1 - i))
@@ -82,26 +85,42 @@ export function History({ onEditDay }: Props) {
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 px-4 py-8">
-      <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Últimos {DAYS} dias</h1>
-
-      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Consistência</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
-          {streak === 0
-            ? 'Nenhum dia registrado ainda hoje.'
-            : `${streak} dia${streak === 1 ? '' : 's'} seguidos registrados`}
-        </p>
+      <div>
+        <p className="font-mono text-xs tracking-wide text-brass">PAINEL DE BORDO</p>
+        <h1 className="font-display text-2xl text-parchment">Últimos {DAYS} dias</h1>
       </div>
 
-      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
-        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Academia</h2>
-        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+      <div className="flex items-center gap-4 rounded-lg border border-white/10 bg-ink-2 p-4">
+        <Stamp
+          ringText="DIAS SEGUIDOS •"
+          value={streak}
+          caption="STREAK"
+          tone={streak > 0 ? 'moss' : 'muted'}
+          dashed={streak === 0}
+          size={76}
+        />
+        <div>
+          <h2 className="font-mono text-xs tracking-wide text-parchment-dim">CONSISTÊNCIA</h2>
+          <p className="mt-1 font-body text-sm text-parchment">
+            {streak === 0
+              ? 'Nenhum dia registrado ainda hoje.'
+              : `${streak} dia${streak === 1 ? '' : 's'} seguidos registrados`}
+          </p>
+        </div>
+      </div>
+
+      <div className="rounded-lg border border-white/10 bg-ink-2 p-4">
+        <h2 className="flex items-center gap-2 font-mono text-xs tracking-wide text-brass">
+          <IconGear size={13} />
+          ACADEMIA
+        </h2>
+        <p className="mt-1 font-body text-sm text-parchment-dim">
           {treinos.length} treino{treinos.length === 1 ? '' : 's'} em {DAYS} dias
           {treinos.length > 0 && ` · ${Math.round(totalDuracao / treinos.length)} min em média`}
         </p>
       </div>
 
-      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+      <div className="rounded-lg border border-white/10 bg-ink-2 p-4">
         <StudyTrendChart points={studyTrendPoints} />
       </div>
 
@@ -115,24 +134,25 @@ export function History({ onEditDay }: Props) {
               <button
                 type="button"
                 onClick={() => onEditDay(date)}
-                className="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
+                className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-ink-2 p-3 text-left hover:border-brass/50"
               >
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
-                    {formatDateShort(date)}
-                  </span>
-                  {!registrado && (
-                    <span className="text-xs text-gray-400 dark:text-gray-500">não registrado</span>
-                  )}
-                  {registrado && academia && (
-                    <span className="text-xs text-gray-500 dark:text-gray-400">
-                      {academia.treinou ? `Treinou · ${academia.duracao_min ?? '?'} min` : 'Não treinou'}
-                    </span>
+                <SealDot filled={registrado} />
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono text-sm capitalize text-parchment">{formatDateShort(date)}</span>
+                    {!registrado && (
+                      <span className="font-mono text-xs text-parchment-dim">não registrado</span>
+                    )}
+                    {registrado && academia && (
+                      <span className="font-mono text-xs text-parchment-dim">
+                        {academia.treinou ? `treinou · ${academia.duracao_min ?? '?'} min` : 'não treinou'}
+                      </span>
+                    )}
+                  </div>
+                  {log?.overall_note && (
+                    <p className="mt-1 truncate font-body text-sm text-parchment-dim">{log.overall_note}</p>
                   )}
                 </div>
-                {log?.overall_note && (
-                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{log.overall_note}</p>
-                )}
               </button>
             </li>
           )
