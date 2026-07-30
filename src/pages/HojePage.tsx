@@ -10,7 +10,7 @@ import { IconBriefcase, IconCheck, IconCoin, IconGear, IconPencil } from '../com
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
 const PILLARS = [
-  { path: '/academia', label: 'Academia', table: 'pillar_academia', Icon: IconGear },
+  { path: '/academia/hoje', label: 'Academia', table: 'pillar_academia', Icon: IconGear },
   { path: '/trabalho', label: 'Trabalho', table: 'pillar_trabalho', Icon: IconBriefcase },
   { path: '/estudos', label: 'Estudos', table: 'pillar_estudos', Icon: IconPencil },
   { path: '/financas', label: 'Finanças', table: 'pillar_financas', Icon: IconCoin },

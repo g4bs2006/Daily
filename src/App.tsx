@@ -3,7 +3,9 @@ import { useSession } from './hooks/useSession'
 import { Login } from './components/Login'
 import { AppShell } from './components/layout/AppShell'
 import { HojePage } from './pages/HojePage'
-import { AcademiaPage } from './pages/AcademiaPage'
+import { AcademiaHojePage } from './pages/academia/AcademiaHojePage'
+import { AcademiaTiposPage } from './pages/academia/AcademiaTiposPage'
+import { AcademiaProgressoPage } from './pages/academia/AcademiaProgressoPage'
 import { TrabalhoPage } from './pages/TrabalhoPage'
 import { EstudosPage } from './pages/EstudosPage'
 import { FinancasPage } from './pages/FinancasPage'
@@ -25,7 +27,12 @@ function App() {
         >
           <Route index element={<Navigate to="/hoje" replace />} />
           <Route path="hoje" element={<HojePage />} />
-          <Route path="academia" element={<AcademiaPage />} />
+          <Route path="academia">
+            <Route index element={<Navigate to="/academia/hoje" replace />} />
+            <Route path="hoje" element={<AcademiaHojePage />} />
+            <Route path="tipos" element={<AcademiaTiposPage />} />
+            <Route path="progresso" element={<AcademiaProgressoPage />} />
+          </Route>
           <Route path="trabalho" element={<TrabalhoPage />} />
           <Route path="estudos" element={<EstudosPage />} />
           <Route path="financas" element={<FinancasPage />} />

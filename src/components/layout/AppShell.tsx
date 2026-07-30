@@ -7,7 +7,9 @@ const COLLAPSE_KEY = 'diario-sidebar-collapsed'
 
 const PATH_TITLES: Record<string, string> = {
   '/hoje': 'Hoje',
-  '/academia': 'Academia',
+  '/academia/hoje': 'Academia · Treino do dia',
+  '/academia/tipos': 'Academia · Tipos de Treino',
+  '/academia/progresso': 'Academia · Progresso',
   '/trabalho': 'Trabalho',
   '/estudos': 'Estudos',
   '/financas': 'Finanças',
