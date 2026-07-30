@@ -35,7 +35,7 @@ export function PillarPageShell({
   if (saveState === 'loading') return null
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-5 px-4 py-8">
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 lg:px-10">
       <div>
         <p className="flex items-center gap-2 font-mono text-xs tracking-wide text-brass">
           <Icon size={13} />
@@ -44,24 +44,26 @@ export function PillarPageShell({
         <DateNav logDate={logDate} isToday={isToday} onPrevDay={onPrevDay} onNextDay={onNextDay} onToday={onToday} />
       </div>
 
-      <form onSubmit={onSubmit} className="space-y-4">
-        {children}
+      <div className="grid gap-8 lg:grid-cols-[minmax(0,440px)_1fr] lg:items-start">
+        <form onSubmit={onSubmit} className="space-y-4">
+          {children}
 
-        <button
-          type="submit"
-          disabled={saveState === 'saving'}
-          className="w-full rounded-md bg-brass py-2.5 font-body text-base font-medium text-ink disabled:opacity-50"
-        >
-          {saveState === 'saving' ? 'Salvando...' : 'Salvar'}
-        </button>
+          <button
+            type="submit"
+            disabled={saveState === 'saving'}
+            className="w-full rounded-md bg-brass py-2.5 font-body text-base font-medium text-ink disabled:opacity-50"
+          >
+            {saveState === 'saving' ? 'Salvando...' : 'Salvar'}
+          </button>
 
-        {saveState === 'saved' && <p className="text-center font-mono text-xs text-moss">registrado ✓</p>}
-        {saveState === 'error' && errorMessage && (
-          <p className="font-mono text-xs text-rust">{errorMessage}</p>
-        )}
-      </form>
+          {saveState === 'saved' && <p className="text-center font-mono text-xs text-moss">registrado ✓</p>}
+          {saveState === 'error' && errorMessage && (
+            <p className="font-mono text-xs text-rust">{errorMessage}</p>
+          )}
+        </form>
 
-      {footer}
+        {footer}
+      </div>
     </div>
   )
 }

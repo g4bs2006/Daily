@@ -126,7 +126,7 @@ export function PainelPage() {
   const today = todayIsoDate()
 
   return (
-    <div className="mx-auto w-full max-w-2xl space-y-6 px-4 py-8">
+    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 lg:px-10">
       <div>
         <p className="font-mono text-xs tracking-wide text-brass">PAINEL DE BORDO</p>
         <h1 className="font-display text-2xl text-parchment">Últimos {DAYS} dias</h1>
@@ -157,7 +157,7 @@ export function PainelPage() {
         ))}
       </div>
 
-      <ul className="space-y-2">
+      <ul className="grid gap-2 lg:grid-cols-2">
         {[...days].reverse().map((date) => {
           const log = logByDate.get(date)
           const registrado = Boolean(log)

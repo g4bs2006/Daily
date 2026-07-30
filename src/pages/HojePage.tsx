@@ -111,7 +111,7 @@ export function HojePage() {
   if (state === 'loading') return null
 
   return (
-    <div className="mx-auto w-full max-w-lg space-y-5 px-4 py-8">
+    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 lg:px-10">
       <div>
         <p className="font-mono text-xs tracking-wide text-brass">
           ENTRADA Nº {String(entryNumber ?? 0).padStart(3, '0')}
@@ -119,12 +119,12 @@ export function HojePage() {
         <DateNav logDate={logDate} isToday={isToday} onPrevDay={goPrevDay} onNextDay={goNextDay} onToday={goToday} />
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-2 lg:gap-4">
         {PILLARS.map((p) => (
           <Link
             key={p.path}
             to={isToday ? p.path : `${p.path}?d=${logDate}`}
-            className="flex flex-col items-center gap-1 rounded-lg border border-white/10 bg-ink-2 py-3 text-center hover:border-brass/50"
+            className="flex flex-col items-center gap-1 rounded-lg border border-white/10 bg-ink-2 py-3 text-center hover:border-brass/50 lg:py-4"
           >
             <p.Icon size={16} className={pillarStatus[p.table] ? 'text-moss' : 'text-parchment-dim'} />
             <span className="font-mono text-[10px] tracking-wide text-parchment-dim">{p.label.toUpperCase()}</span>
@@ -133,7 +133,7 @@ export function HojePage() {
         ))}
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4 lg:max-w-2xl">
         <div className="space-y-1">
           <label className="font-mono text-xs tracking-wide text-parchment-dim">COMO FOI O DIA?</label>
           <textarea

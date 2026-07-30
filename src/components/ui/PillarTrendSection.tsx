@@ -17,7 +17,7 @@ export function PillarTrendSection({ loading, stats, children }: Props) {
   if (loading) return null
 
   return (
-    <div className="space-y-3 border-t border-white/10 pt-5">
+    <div className="space-y-3 border-t border-white/10 pt-5 lg:border-t-0 lg:pt-0">
       <div className="grid grid-cols-3 gap-2">
         {stats.map((stat) => (
           <StatTile key={stat.label} label={stat.label} value={stat.value} caption={stat.caption} />
