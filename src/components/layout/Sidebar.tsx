@@ -1,27 +1,39 @@
 import type { ComponentType } from 'react'
-import { IconAnchor, IconCheck, IconChevron, IconGauge, IconPencil, IconPower } from '../ui/icons'
+import { NavLink } from 'react-router-dom'
+import {
+  IconAnchor,
+  IconBriefcase,
+  IconCheck,
+  IconChevron,
+  IconCoin,
+  IconGauge,
+  IconGear,
+  IconPencil,
+  IconPower,
+} from '../ui/icons'
 
-type View = 'captura' | 'painel' | 'habitos'
-
-type NavItem = { view: View; label: string; Icon: ComponentType<{ size?: number; className?: string }> }
+type NavItem = { to: string; label: string; Icon: ComponentType<{ size?: number; className?: string }> }
 
 const NAV_ITEMS: NavItem[] = [
-  { view: 'captura', label: 'Captura', Icon: IconPencil },
-  { view: 'painel', label: 'Painel', Icon: IconGauge },
-  { view: 'habitos', label: 'Hábitos', Icon: IconCheck },
+  { to: '/hoje', label: 'Hoje', Icon: IconAnchor },
+  { to: '/academia', label: 'Academia', Icon: IconGear },
+  { to: '/trabalho', label: 'Trabalho', Icon: IconBriefcase },
+  { to: '/estudos', label: 'Estudos', Icon: IconPencil },
+  { to: '/financas', label: 'Finanças', Icon: IconCoin },
+  { to: '/habitos', label: 'Hábitos', Icon: IconCheck },
+  { to: '/painel', label: 'Painel', Icon: IconGauge },
 ]
 
 type Props = {
-  view: View
-  onSelect: (view: View) => void
   collapsed: boolean
   onToggleCollapsed: () => void
+  onNavigate?: () => void
   userEmail: string
   onSignOut: () => void
   className?: string
 }
 
-export function Sidebar({ view, onSelect, collapsed, onToggleCollapsed, userEmail, onSignOut, className = '' }: Props) {
+export function Sidebar({ collapsed, onToggleCollapsed, onNavigate, userEmail, onSignOut, className = '' }: Props) {
   return (
     <div
       className={`flex h-full flex-col bg-ink-2 text-parchment ${className}`}
@@ -33,23 +45,22 @@ export function Sidebar({ view, onSelect, collapsed, onToggleCollapsed, userEmai
       </div>
 
       <nav className="flex-1 space-y-1 px-2 py-4">
-        {NAV_ITEMS.map((item) => {
-          const active = view === item.view
-          return (
-            <button
-              key={item.view}
-              type="button"
-              onClick={() => onSelect(item.view)}
-              title={item.label}
-              className={`flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-body text-sm transition-colors ${
-                active ? 'bg-brass/15 text-brass' : 'text-parchment-dim hover:bg-white/5 hover:text-parchment'
-              }`}
-            >
-              <item.Icon size={18} className="shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
-            </button>
-          )
-        })}
+        {NAV_ITEMS.map((item) => (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            onClick={onNavigate}
+            title={item.label}
+            className={({ isActive }) =>
+              `flex w-full items-center gap-3 rounded-md px-3 py-2 text-left font-body text-sm transition-colors ${
+                isActive ? 'bg-brass/15 text-brass' : 'text-parchment-dim hover:bg-white/5 hover:text-parchment'
+              }`
+            }
+          >
+            <item.Icon size={18} className="shrink-0" />
+            {!collapsed && <span>{item.label}</span>}
+          </NavLink>
+        ))}
       </nav>
 
       <div className="space-y-2 border-t border-white/10 px-2 py-3">
@@ -61,9 +72,7 @@ export function Sidebar({ view, onSelect, collapsed, onToggleCollapsed, userEmai
           <IconChevron direction={collapsed ? 'right' : 'left'} size={16} className="shrink-0" />
           {!collapsed && <span>Recolher</span>}
         </button>
-        {!collapsed && (
-          <p className="truncate px-3 font-mono text-xs text-parchment-dim">{userEmail}</p>
-        )}
+        {!collapsed && <p className="truncate px-3 font-mono text-xs text-parchment-dim">{userEmail}</p>}
         <button
           type="button"
           onClick={onSignOut}
@@ -76,5 +85,3 @@ export function Sidebar({ view, onSelect, collapsed, onToggleCollapsed, userEmai
     </div>
   )
 }
-
-export type { View }

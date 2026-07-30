@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react'
-import { supabase } from '../../lib/supabase'
-import { formatDateShort, isoDateDaysAgo, todayIsoDate } from '../../lib/date'
-import { StudyTrendChart } from './StudyTrendChart'
-import { Stamp } from '../ui/Stamp'
-import { SealDot } from '../ui/SealDot'
-import { IconGear } from '../ui/icons'
+import { Link } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { formatDateShort, isoDateDaysAgo, todayIsoDate } from '../lib/date'
+import { StudyTrendChart } from '../components/history/StudyTrendChart'
+import { Stamp } from '../components/ui/Stamp'
+import { SealDot } from '../components/ui/SealDot'
+import { IconGear } from '../components/ui/icons'
 
 const DAYS = 7
 const STUDY_TREND_DAYS = 30
@@ -13,11 +14,7 @@ type DailyLogRow = { log_date: string; overall_note: string | null }
 type AcademiaRow = { log_date: string; treinou: boolean; duracao_min: number | null }
 type EstudosRow = { log_date: string; minutos_estudo: number | null }
 
-type Props = {
-  onEditDay: (logDate: string) => void
-}
-
-export function History({ onEditDay }: Props) {
+export function PainelPage() {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [dailyLogs, setDailyLogs] = useState<DailyLogRow[]>([])
@@ -83,6 +80,8 @@ export function History({ onEditDay }: Props) {
     streak++
   }
 
+  const today = todayIsoDate()
+
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 px-4 py-8">
       <div>
@@ -131,9 +130,8 @@ export function History({ onEditDay }: Props) {
           const registrado = Boolean(log)
           return (
             <li key={date}>
-              <button
-                type="button"
-                onClick={() => onEditDay(date)}
+              <Link
+                to={date === today ? '/hoje' : `/hoje?d=${date}`}
                 className="flex w-full items-center gap-3 rounded-lg border border-white/10 bg-ink-2 p-3 text-left hover:border-brass/50"
               >
                 <SealDot filled={registrado} />
@@ -153,7 +151,7 @@ export function History({ onEditDay }: Props) {
                     <p className="mt-1 truncate font-body text-sm text-parchment-dim">{log.overall_note}</p>
                   )}
                 </div>
-              </button>
+              </Link>
             </li>
           )
         })}

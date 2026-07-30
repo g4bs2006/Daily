@@ -26,3 +26,9 @@ export function formatDateShort(isoDate: string) {
     month: '2-digit',
   })
 }
+
+export function shiftIsoDate(isoDate: string, days: number) {
+  const date = new Date(isoDate + 'T00:00:00')
+  date.setDate(date.getDate() + days)
+  return date.toISOString().slice(0, 10)
+}
