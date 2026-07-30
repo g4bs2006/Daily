@@ -4,6 +4,7 @@ import { formatDateLong, todayIsoDate } from '../../lib/date'
 import { AcademiaBlock, emptyAcademia, type AcademiaState } from './AcademiaBlock'
 import { TrabalhoBlock, emptyTrabalho, type TrabalhoState } from './TrabalhoBlock'
 import { EstudosBlock, emptyEstudos, type EstudosState } from './EstudosBlock'
+import { FinancasBlock, emptyFinancas, type FinancasState } from './FinancasBlock'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
@@ -13,6 +14,7 @@ export function DailyCaptureForm() {
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
   const [trabalho, setTrabalho] = useState<TrabalhoState>(emptyTrabalho)
   const [estudos, setEstudos] = useState<EstudosState>(emptyEstudos)
+  const [financas, setFinancas] = useState<FinancasState>(emptyFinancas)
   const [tomorrowPlanText, setTomorrowPlanText] = useState('')
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -21,7 +23,7 @@ export function DailyCaptureForm() {
     let active = true
 
     async function load() {
-      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, planRes] = await Promise.all([
+      const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes, planRes] = await Promise.all([
         supabase.from('daily_log').select('overall_note').eq('log_date', logDate).maybeSingle(),
         supabase
           .from('pillar_academia')
@@ -38,13 +40,23 @@ export function DailyCaptureForm() {
           .select('minutos_estudo, materia, progresso')
           .eq('log_date', logDate)
           .maybeSingle(),
+        supabase
+          .from('pillar_financas')
+          .select('gasto_dia, categoria')
+          .eq('log_date', logDate)
+          .maybeSingle(),
         supabase.from('tomorrow_plan').select('description').eq('log_date', logDate).order('created_at'),
       ])
 
       if (!active) return
 
       const firstError =
-        dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error ?? planRes.error
+        dailyLogRes.error ??
+        academiaRes.error ??
+        trabalhoRes.error ??
+        estudosRes.error ??
+        financasRes.error ??
+        planRes.error
       if (firstError) {
         setErrorMessage(firstError.message)
         setState('error')
@@ -79,6 +91,14 @@ export function DailyCaptureForm() {
               progresso: estudosRes.data.progresso ?? '',
             }
           : emptyEstudos,
+      )
+      setFinancas(
+        financasRes.data
+          ? {
+              gastoDia: financasRes.data.gasto_dia?.toString() ?? '',
+              categoria: financasRes.data.categoria ?? '',
+            }
+          : emptyFinancas,
       )
       setTomorrowPlanText((planRes.data ?? []).map((row) => row.description).join('\n'))
       setState('idle')
@@ -137,13 +157,24 @@ export function DailyCaptureForm() {
       { onConflict: 'log_date' },
     )
 
-    const [dailyLogRes, academiaRes, trabalhoRes, estudosRes] = await Promise.all([
+    const financasUpsert = supabase.from('pillar_financas').upsert(
+      {
+        log_date: logDate,
+        gasto_dia: financas.gastoDia ? Number(financas.gastoDia) : null,
+        categoria: financas.categoria || null,
+      },
+      { onConflict: 'log_date' },
+    )
+
+    const [dailyLogRes, academiaRes, trabalhoRes, estudosRes, financasRes] = await Promise.all([
       dailyLogUpsert,
       academiaUpsert,
       trabalhoUpsert,
       estudosUpsert,
+      financasUpsert,
     ])
-    const upsertError = dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error
+    const upsertError =
+      dailyLogRes.error ?? academiaRes.error ?? trabalhoRes.error ?? estudosRes.error ?? financasRes.error
     if (upsertError) {
       setErrorMessage(upsertError.message)
       setState('error')
@@ -194,6 +225,7 @@ export function DailyCaptureForm() {
         <AcademiaBlock value={academia} onChange={setAcademia} />
         <TrabalhoBlock value={trabalho} onChange={setTrabalho} />
         <EstudosBlock value={estudos} onChange={setEstudos} />
+        <FinancasBlock value={financas} onChange={setFinancas} />
 
         <div className="space-y-1">
           <label className="text-sm font-medium text-gray-700 dark:text-gray-300">
