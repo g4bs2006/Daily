@@ -4,13 +4,14 @@ import { ensureDailyLog } from '../lib/ensureDailyLog'
 import { useLogDate } from '../hooks/useLogDate'
 import { usePillarTrend } from '../hooks/usePillarTrend'
 import { usePlanoSemana } from '../hooks/usePlanoSemana'
+import { useTiposTreino } from '../hooks/useTiposTreino'
 import { useExercicios } from '../hooks/useExercicios'
 import { isoDateDaysAgo, todayIsoDate } from '../lib/date'
 import { PillarPageShell, type SaveState } from '../components/ui/PillarPageShell'
 import { PillarTrendSection } from '../components/ui/PillarTrendSection'
 import { TrendBarChart, type TrendPoint } from '../components/ui/TrendBarChart'
 import { fieldInputClass, fieldLabelClass } from '../components/ui/InstrumentCard'
-import { WeeklyPlanConfig } from '../components/academia/WeeklyPlanConfig'
+import { TipoTreinoConfig } from '../components/academia/TipoTreinoConfig'
 import { SetLogger, type LoggedSet } from '../components/academia/SetLogger'
 import { IconGear } from '../components/ui/icons'
 
@@ -28,12 +29,14 @@ export function AcademiaPage() {
     (row) => row.duracao_min,
   )
   const { planoPorDia, loading: planoLoading, reload: reloadPlano } = usePlanoSemana()
+  const { tipos, loading: tiposLoading, reload: reloadTipos } = useTiposTreino()
   const { exercicios, loading: exerciciosLoading, reload: reloadExercicios } = useExercicios()
 
   const [treinou, setTreinou] = useState(false)
   const [duracaoMin, setDuracaoMin] = useState('')
   const [tipo, setTipo] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [tipoTreinoId, setTipoTreinoId] = useState<string | null>(null)
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [showPlanConfig, setShowPlanConfig] = useState(false)
@@ -46,12 +49,14 @@ export function AcademiaPage() {
   const [progressaoPoints, setProgressaoPoints] = useState<TrendPoint[]>([])
   const [progressaoLoading, setProgressaoLoading] = useState(false)
 
+  const diaSemana = new Date(logDate + 'T00:00:00').getDay()
+
   useEffect(() => {
     let active = true
     setState('loading')
     supabase
       .from('pillar_academia')
-      .select('treinou, duracao_min, tipo, observacao')
+      .select('treinou, duracao_min, tipo, observacao, tipo_treino_id')
       .eq('log_date', logDate)
       .maybeSingle()
       .then(({ data, error }) => {
@@ -65,12 +70,18 @@ export function AcademiaPage() {
         setDuracaoMin(data?.duracao_min?.toString() ?? '')
         setTipo(data?.tipo ?? '')
         setObservacao(data?.observacao ?? '')
+        setTipoTreinoId(data ? data.tipo_treino_id ?? '' : null)
         setState('idle')
       })
     return () => {
       active = false
     }
   }, [logDate])
+
+  useEffect(() => {
+    if (tipoTreinoId !== null || planoLoading) return
+    setTipoTreinoId(planoPorDia[diaSemana]?.tipo_treino_id ?? '')
+  }, [tipoTreinoId, planoLoading, planoPorDia, diaSemana])
 
   async function loadSets() {
     const { data, error } = await supabase
@@ -157,6 +168,7 @@ export function AcademiaPage() {
         duracao_min: duracaoMin ? Number(duracaoMin) : null,
         tipo: tipo || null,
         observacao: observacao || null,
+        tipo_treino_id: tipoTreinoId || null,
       },
       { onConflict: 'log_date' },
     )
@@ -196,9 +208,8 @@ export function AcademiaPage() {
     treinoStreak++
   }
 
-  const diaSemana = new Date(logDate + 'T00:00:00').getDay()
-  const planoHoje = planoPorDia[diaSemana] ?? null
-  const planExercicioIds = new Set((planoHoje?.itens ?? []).map((i) => i.exercicio_id))
+  const tipoSelecionado = tipos.find((t) => t.id === tipoTreinoId) ?? null
+  const planExercicioIds = new Set((tipoSelecionado?.itens ?? []).map((i) => i.exercicio_id))
   const extraIdsFromSets = Object.keys(setsForDate).filter((id) => !planExercicioIds.has(id))
   const allExtraIds = Array.from(new Set([...extraIdsFromSets, ...pendingExtraIds]))
   const exercicioById = new Map(exercicios.map((ex) => [ex.id, ex]))
@@ -288,10 +299,10 @@ export function AcademiaPage() {
               />
             </div>
             <div className="space-y-1">
-              <label className={fieldLabelClass}>TIPO</label>
+              <label className={fieldLabelClass}>TIPO (LIVRE, OPCIONAL)</label>
               <input
                 type="text"
-                placeholder="Musculação, corrida..."
+                placeholder="Corrida, natação..."
                 value={tipo}
                 onChange={(e) => setTipo(e.target.value)}
                 className={fieldInputClass}
@@ -299,13 +310,29 @@ export function AcademiaPage() {
             </div>
           </div>
 
-          {!planoLoading && !exerciciosLoading && (
-            <div className="space-y-3 rounded-lg border border-white/10 bg-ink-2 p-3">
-              <p className="font-mono text-xs tracking-wide text-brass">
-                {planoHoje?.nome_treino ? `TREINO DE HOJE — ${planoHoje.nome_treino.toUpperCase()}` : 'REGISTRAR SÉRIES'}
-              </p>
+          {!tiposLoading && (
+            <div className="space-y-1">
+              <label className={fieldLabelClass}>TIPO DE TREINO REALIZADO</label>
+              <select
+                value={tipoTreinoId ?? ''}
+                onChange={(e) => setTipoTreinoId(e.target.value)}
+                className={fieldInputClass}
+              >
+                <option value="">Selecionar tipo de treino</option>
+                {tipos.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.nome}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
-              {(planoHoje?.itens ?? []).map((item) => (
+          {!tiposLoading && !exerciciosLoading && (
+            <div className="space-y-3 rounded-lg border border-white/10 bg-ink-2 p-3">
+              <p className="font-mono text-xs tracking-wide text-brass">REGISTRAR SÉRIES</p>
+
+              {(tipoSelecionado?.itens ?? []).map((item) => (
                 <SetLogger
                   key={item.exercicio_id}
                   nome={item.exercicio?.nome ?? ''}
@@ -329,6 +356,12 @@ export function AcademiaPage() {
                   onRemoveSet={handleRemoveSet}
                 />
               ))}
+
+              {!tipoSelecionado && allExtraIds.length === 0 && (
+                <p className="font-mono text-xs text-parchment-dim">
+                  Selecione um tipo de treino acima, ou registre um exercício livre abaixo.
+                </p>
+              )}
 
               <div className="flex flex-wrap gap-2">
                 <select
@@ -371,15 +404,17 @@ export function AcademiaPage() {
         onClick={() => setShowPlanConfig((v) => !v)}
         className="font-mono text-xs text-parchment-dim hover:text-parchment"
       >
-        {showPlanConfig ? '– ocultar plano semanal' : '+ gerenciar plano semanal'}
+        {showPlanConfig ? '– ocultar tipos de treino' : '+ gerenciar tipos de treino'}
       </button>
 
-      {showPlanConfig && !planoLoading && !exerciciosLoading && (
-        <WeeklyPlanConfig
-          planoPorDia={planoPorDia}
+      {showPlanConfig && !planoLoading && !tiposLoading && !exerciciosLoading && (
+        <TipoTreinoConfig
+          tipos={tipos}
           exercicios={exercicios}
-          onReloadPlano={reloadPlano}
+          planoPorDia={planoPorDia}
+          onReloadTipos={reloadTipos}
           onReloadExercicios={reloadExercicios}
+          onReloadPlano={reloadPlano}
         />
       )}
     </PillarPageShell>
