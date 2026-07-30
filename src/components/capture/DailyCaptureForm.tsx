@@ -10,8 +10,14 @@ import { useHabitoDefinicoes } from '../../hooks/useHabitoDefinicoes'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
 
-export function DailyCaptureForm() {
-  const logDate = todayIsoDate()
+type Props = {
+  logDate?: string
+  onDone?: () => void
+}
+
+export function DailyCaptureForm({ logDate: logDateProp, onDone }: Props) {
+  const logDate = logDateProp ?? todayIsoDate()
+  const isToday = logDate === todayIsoDate()
   const { definicoes: habitoDefinicoes, loading: habitosLoading } = useHabitoDefinicoes()
   const [overallNote, setOverallNote] = useState('')
   const [academia, setAcademia] = useState<AcademiaState>(emptyAcademia)
@@ -230,15 +236,29 @@ export function DailyCaptureForm() {
     }
 
     setState('saved')
+    if (!isToday) onDone?.()
   }
 
   if (state === 'loading' || habitosLoading) return null
 
   return (
     <div className="mx-auto w-full max-w-lg space-y-4 px-4 py-8">
-      <div>
-        <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Fechamento do dia</h1>
-        <p className="text-sm capitalize text-gray-500 dark:text-gray-400">{formatDateLong(logDate)}</p>
+      <div className="flex items-baseline justify-between">
+        <div>
+          <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+            {isToday ? 'Fechamento do dia' : 'Editando dia passado'}
+          </h1>
+          <p className="text-sm capitalize text-gray-500 dark:text-gray-400">{formatDateLong(logDate)}</p>
+        </div>
+        {!isToday && onDone && (
+          <button
+            type="button"
+            onClick={onDone}
+            className="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+          >
+            Voltar
+          </button>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">

@@ -10,7 +10,11 @@ type DailyLogRow = { log_date: string; overall_note: string | null }
 type AcademiaRow = { log_date: string; treinou: boolean; duracao_min: number | null }
 type EstudosRow = { log_date: string; minutos_estudo: number | null }
 
-export function History() {
+type Props = {
+  onEditDay: (logDate: string) => void
+}
+
+export function History({ onEditDay }: Props) {
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [dailyLogs, setDailyLogs] = useState<DailyLogRow[]>([])
@@ -70,9 +74,24 @@ export function History() {
     registrado: logByDate.has(date),
   }))
 
+  let streak = 0
+  for (let i = trendDays.length - 1; i >= 0; i--) {
+    if (!logByDate.has(trendDays[i])) break
+    streak++
+  }
+
   return (
     <div className="mx-auto w-full max-w-lg space-y-6 px-4 py-8">
       <h1 className="text-xl font-semibold text-gray-900 dark:text-gray-100">Últimos {DAYS} dias</h1>
+
+      <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
+        <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Consistência</h2>
+        <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">
+          {streak === 0
+            ? 'Nenhum dia registrado ainda hoje.'
+            : `${streak} dia${streak === 1 ? '' : 's'} seguidos registrados`}
+        </p>
+      </div>
 
       <div className="rounded-lg border border-gray-200 p-4 dark:border-gray-800">
         <h2 className="text-sm font-semibold text-gray-900 dark:text-gray-100">Academia</h2>
@@ -92,26 +111,29 @@ export function History() {
           const academia = academiaByDate.get(date)
           const registrado = Boolean(log)
           return (
-            <li
-              key={date}
-              className="rounded-lg border border-gray-200 p-3 dark:border-gray-800"
-            >
-              <div className="flex items-center justify-between">
-                <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
-                  {formatDateShort(date)}
-                </span>
-                {!registrado && (
-                  <span className="text-xs text-gray-400 dark:text-gray-500">não registrado</span>
-                )}
-                {registrado && academia && (
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
-                    {academia.treinou ? `Treinou · ${academia.duracao_min ?? '?'} min` : 'Não treinou'}
+            <li key={date}>
+              <button
+                type="button"
+                onClick={() => onEditDay(date)}
+                className="w-full rounded-lg border border-gray-200 p-3 text-left hover:border-gray-400 dark:border-gray-800 dark:hover:border-gray-600"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium capitalize text-gray-900 dark:text-gray-100">
+                    {formatDateShort(date)}
                   </span>
+                  {!registrado && (
+                    <span className="text-xs text-gray-400 dark:text-gray-500">não registrado</span>
+                  )}
+                  {registrado && academia && (
+                    <span className="text-xs text-gray-500 dark:text-gray-400">
+                      {academia.treinou ? `Treinou · ${academia.duracao_min ?? '?'} min` : 'Não treinou'}
+                    </span>
+                  )}
+                </div>
+                {log?.overall_note && (
+                  <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{log.overall_note}</p>
                 )}
-              </div>
-              {log?.overall_note && (
-                <p className="mt-1 text-sm text-gray-600 dark:text-gray-400">{log.overall_note}</p>
-              )}
+              </button>
             </li>
           )
         })}

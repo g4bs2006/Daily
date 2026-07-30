@@ -17,9 +17,20 @@ const TABS: { view: View; label: string }[] = [
 function App() {
   const { session, loading } = useSession()
   const [view, setView] = useState<View>('captura')
+  const [editDate, setEditDate] = useState<string | null>(null)
 
   if (loading) return null
   if (!session) return <Login />
+
+  function selectTab(next: View) {
+    setEditDate(null)
+    setView(next)
+  }
+
+  function editDay(logDate: string) {
+    setEditDate(logDate)
+    setView('captura')
+  }
 
   return (
     <div className="min-h-svh bg-gray-50 dark:bg-gray-950">
@@ -29,7 +40,7 @@ function App() {
             <button
               key={tab.view}
               type="button"
-              onClick={() => setView(tab.view)}
+              onClick={() => selectTab(tab.view)}
               className={
                 view === tab.view
                   ? 'text-sm font-semibold text-gray-900 dark:text-gray-100'
@@ -51,8 +62,10 @@ function App() {
           </button>
         </div>
       </header>
-      {view === 'captura' && <DailyCaptureForm />}
-      {view === 'historico' && <History />}
+      {view === 'captura' && (
+        <DailyCaptureForm logDate={editDate ?? undefined} onDone={() => selectTab('historico')} />
+      )}
+      {view === 'historico' && <History onEditDay={editDay} />}
       {view === 'habitos' && <HabitosConfig />}
     </div>
   )
