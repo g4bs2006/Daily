@@ -1,10 +1,8 @@
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { isoDateDaysAgo, todayIsoDate } from '../lib/date'
 import { StatTile } from '../components/ui/StatTile'
 import { Stamp } from '../components/ui/Stamp'
-import { HeatmapCalendar } from '../components/ui/HeatmapCalendar'
 
 const DAYS = 7
 
@@ -15,14 +13,7 @@ type EstudosRow = { log_date: string; minutos_estudo: number | null }
 type FinancasRow = { log_date: string; gasto_dia: number | null }
 type HabitosRow = { log_date: string; total_marcados: number | null; total_possivel: number | null }
 
-const PILLAR_TABLES = ['pillar_academia', 'pillar_trabalho', 'pillar_estudos', 'pillar_financas', 'pillar_habitos']
-
-function pad(n: number) {
-  return String(n).padStart(2, '0')
-}
-
 export function PainelPage() {
-  const navigate = useNavigate()
   const [loading, setLoading] = useState(true)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [dailyLogs, setDailyLogs] = useState<DailyLogRow[]>([])
@@ -31,13 +22,6 @@ export function PainelPage() {
   const [estudosRows, setEstudosRows] = useState<EstudosRow[]>([])
   const [financasRows, setFinancasRows] = useState<FinancasRow[]>([])
   const [habitosRows, setHabitosRows] = useState<HabitosRow[]>([])
-
-  const today = new Date()
-  const [calYear, setCalYear] = useState(today.getFullYear())
-  const [calMonth, setCalMonth] = useState(today.getMonth())
-  const [calLoading, setCalLoading] = useState(true)
-  const [calRegistered, setCalRegistered] = useState<Set<string>>(new Set())
-  const [calCounts, setCalCounts] = useState<Map<string, number>>(new Map())
 
   useEffect(() => {
     let active = true
@@ -78,42 +62,6 @@ export function PainelPage() {
     }
   }, [])
 
-  useEffect(() => {
-    let active = true
-    setCalLoading(true)
-    const from = `${calYear}-${pad(calMonth + 1)}-01`
-    const to = `${calYear}-${pad(calMonth + 1)}-${pad(new Date(calYear, calMonth + 1, 0).getDate())}`
-
-    Promise.all([
-      supabase.from('daily_log').select('log_date').gte('log_date', from).lte('log_date', to),
-      ...PILLAR_TABLES.map((table) =>
-        supabase.from(table).select('log_date').gte('log_date', from).lte('log_date', to),
-      ),
-    ]).then(([logRes, ...pillarResults]) => {
-      if (!active) return
-      const error = logRes.error ?? pillarResults.find((r) => r.error)?.error
-      if (error) {
-        setCalLoading(false)
-        return
-      }
-      const registered = new Set((logRes.data ?? []).map((r) => r.log_date as string))
-      const counts = new Map<string, number>()
-      for (const result of pillarResults) {
-        for (const row of result.data ?? []) {
-          const date = (row as { log_date: string }).log_date
-          counts.set(date, (counts.get(date) ?? 0) + 1)
-        }
-      }
-      setCalRegistered(registered)
-      setCalCounts(counts)
-      setCalLoading(false)
-    })
-
-    return () => {
-      active = false
-    }
-  }, [calYear, calMonth])
-
   if (loading) return null
   if (errorMessage) {
     return <p className="p-4 font-mono text-xs text-rust">{errorMessage}</p>
@@ -150,37 +98,14 @@ export function PainelPage() {
     { key: 'hábitos', label: 'Hábitos', value: mediaHabitos !== null ? `${mediaHabitos}%` : '—', caption: 'conclusão média' },
   ]
 
-  function selectDay(date: string) {
-    navigate(date === todayIsoDate() ? '/hoje' : `/hoje?d=${date}`)
-  }
-
-  function nextMonth() {
-    setCalMonth((m) => {
-      if (m === 11) {
-        setCalYear((y) => y + 1)
-        return 0
-      }
-      return m + 1
-    })
-  }
-
-  function prevMonth() {
-    setCalMonth((m) => {
-      if (m === 0) {
-        setCalYear((y) => y - 1)
-        return 11
-      }
-      return m - 1
-    })
-  }
-
-  const isCurrentMonth = calYear === today.getFullYear() && calMonth === today.getMonth()
-
   return (
-    <div className="mx-auto w-full max-w-5xl space-y-6 px-4 py-8 lg:px-10">
+    <div className="mx-auto w-full max-w-4xl space-y-6 px-4 py-8 lg:px-10">
       <div>
         <p className="font-mono text-xs tracking-wide text-brass">PAINEL DE BORDO</p>
         <h1 className="font-display text-2xl text-parchment">Visão geral</h1>
+        <p className="mt-1 font-body text-sm text-parchment-dim">
+          Calendário completo e edição retroativa ficam em <span className="text-brass">Hoje</span>, na sidebar.
+        </p>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[auto_1fr] lg:items-start">
@@ -208,22 +133,6 @@ export function PainelPage() {
             <StatTile key={tile.key} label={tile.label} value={tile.value} caption={tile.caption} />
           ))}
         </div>
-      </div>
-
-      <div className="rounded-lg border border-white/10 bg-ink-2 p-4">
-        {!calLoading && (
-          <HeatmapCalendar
-            year={calYear}
-            month={calMonth}
-            countByDate={calCounts}
-            registeredDates={calRegistered}
-            todayDate={todayIsoDate()}
-            onSelectDay={selectDay}
-            onPrevMonth={prevMonth}
-            onNextMonth={nextMonth}
-            disableNext={isCurrentMonth}
-          />
-        )}
       </div>
     </div>
   )

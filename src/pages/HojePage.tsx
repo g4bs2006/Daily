@@ -2,10 +2,13 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useLogDate } from '../hooks/useLogDate'
+import { useMonthActivity } from '../hooks/useMonthActivity'
+import { todayIsoDate } from '../lib/date'
 import { DateNav } from '../components/ui/DateNav'
 import { Stamp } from '../components/ui/Stamp'
 import { SealDot } from '../components/ui/SealDot'
 import { ConfirmDeleteButton } from '../components/ui/ConfirmDeleteButton'
+import { HeatmapCalendar } from '../components/ui/HeatmapCalendar'
 import { IconBriefcase, IconCheck, IconCoin, IconGear, IconPencil } from '../components/ui/icons'
 
 type SaveState = 'loading' | 'idle' | 'saving' | 'saved' | 'error'
@@ -19,7 +22,7 @@ const PILLARS = [
 ] as const
 
 export function HojePage() {
-  const { logDate, isToday, goPrevDay, goNextDay, goToday } = useLogDate()
+  const { logDate, isToday, goPrevDay, goNextDay, goToday, goTo } = useLogDate()
   const [entryNumber, setEntryNumber] = useState<number | null>(null)
   const [overallNote, setOverallNote] = useState('')
   const [tomorrowPlanText, setTomorrowPlanText] = useState('')
@@ -27,6 +30,12 @@ export function HojePage() {
   const [pillarStatus, setPillarStatus] = useState<Record<string, boolean>>({})
   const [state, setState] = useState<SaveState>('loading')
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
+
+  const today = new Date()
+  const [calYear, setCalYear] = useState(today.getFullYear())
+  const [calMonth, setCalMonth] = useState(today.getMonth())
+  const monthActivity = useMonthActivity(calYear, calMonth)
+  const isCurrentMonth = calYear === today.getFullYear() && calMonth === today.getMonth()
 
   useEffect(() => {
     let active = true
@@ -124,79 +133,122 @@ export function HojePage() {
     setState('idle')
   }
 
+  function nextMonth() {
+    setCalMonth((m) => {
+      if (m === 11) {
+        setCalYear((y) => y + 1)
+        return 0
+      }
+      return m + 1
+    })
+  }
+
+  function prevMonth() {
+    setCalMonth((m) => {
+      if (m === 0) {
+        setCalYear((y) => y - 1)
+        return 11
+      }
+      return m - 1
+    })
+  }
+
   if (state === 'loading') return null
 
   return (
-    <div className="mx-auto w-full max-w-3xl space-y-6 px-4 py-8 lg:px-10">
-      <div>
-        <p className="font-mono text-xs tracking-wide text-brass">
-          ENTRADA Nº {String(entryNumber ?? 0).padStart(3, '0')}
-        </p>
-        <DateNav logDate={logDate} isToday={isToday} onPrevDay={goPrevDay} onNextDay={goNextDay} onToday={goToday} />
-      </div>
-
-      <div className="grid grid-cols-5 gap-2 lg:gap-4">
-        {PILLARS.map((p) => (
-          <Link
-            key={p.path}
-            to={isToday ? p.path : `${p.path}?d=${logDate}`}
-            className="flex flex-col items-center gap-1 rounded-lg border border-white/10 bg-ink-2 py-3 text-center hover:border-brass/50 lg:py-4"
-          >
-            <p.Icon size={16} className={pillarStatus[p.table] ? 'text-moss' : 'text-parchment-dim'} />
-            <span className="font-mono text-[10px] tracking-wide text-parchment-dim">{p.label.toUpperCase()}</span>
-            <SealDot filled={Boolean(pillarStatus[p.table])} />
-          </Link>
-        ))}
-      </div>
-
-      <form onSubmit={handleSubmit} className="space-y-4 lg:max-w-2xl">
-        <div className="space-y-1">
-          <label className="font-mono text-xs tracking-wide text-parchment-dim">COMO FOI O DIA?</label>
-          <textarea
-            value={overallNote}
-            onChange={(e) => setOverallNote(e.target.value)}
-            rows={4}
-            className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
-          />
+    <div className="mx-auto w-full max-w-6xl space-y-6 px-4 py-8 lg:px-10">
+      <div className="grid gap-8 lg:grid-cols-[1fr_minmax(0,420px)] lg:items-start">
+        <div className="space-y-4">
+          <p className="font-mono text-xs tracking-wide text-brass">CALENDÁRIO</p>
+          <div className="rounded-lg border border-white/10 bg-ink-2 p-4">
+            {!monthActivity.loading && (
+              <HeatmapCalendar
+                year={calYear}
+                month={calMonth}
+                countByDate={monthActivity.counts}
+                registeredDates={monthActivity.registered}
+                todayDate={todayIsoDate()}
+                onSelectDay={goTo}
+                onPrevMonth={prevMonth}
+                onNextMonth={nextMonth}
+                disableNext={isCurrentMonth}
+              />
+            )}
+          </div>
         </div>
 
-        <div className="space-y-1">
-          <label className="font-mono text-xs tracking-wide text-parchment-dim">
-            PLANEJAMENTO PARA AMANHÃ (ATÉ 3 ITENS, UM POR LINHA)
-          </label>
-          <textarea
-            value={tomorrowPlanText}
-            onChange={(e) => setTomorrowPlanText(e.target.value)}
-            rows={3}
-            className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
-          />
+        <div className="space-y-6">
+          <div>
+            <p className="font-mono text-xs tracking-wide text-brass">
+              ENTRADA Nº {String(entryNumber ?? 0).padStart(3, '0')}
+            </p>
+            <DateNav logDate={logDate} isToday={isToday} onPrevDay={goPrevDay} onNextDay={goNextDay} onToday={goToday} />
+          </div>
+
+          <div className="grid grid-cols-5 gap-2">
+            {PILLARS.map((p) => (
+              <Link
+                key={p.path}
+                to={isToday ? p.path : `${p.path}?d=${logDate}`}
+                className="flex flex-col items-center gap-1 rounded-lg border border-white/10 bg-ink-2 py-3 text-center hover:border-brass/50"
+              >
+                <p.Icon size={16} className={pillarStatus[p.table] ? 'text-moss' : 'text-parchment-dim'} />
+                <span className="font-mono text-[10px] tracking-wide text-parchment-dim">{p.label.toUpperCase()}</span>
+                <SealDot filled={Boolean(pillarStatus[p.table])} />
+              </Link>
+            ))}
+          </div>
+
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1">
+              <label className="font-mono text-xs tracking-wide text-parchment-dim">COMO FOI O DIA?</label>
+              <textarea
+                value={overallNote}
+                onChange={(e) => setOverallNote(e.target.value)}
+                rows={4}
+                className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
+              />
+            </div>
+
+            <div className="space-y-1">
+              <label className="font-mono text-xs tracking-wide text-parchment-dim">
+                PLANEJAMENTO PARA AMANHÃ (ATÉ 3 ITENS, UM POR LINHA)
+              </label>
+              <textarea
+                value={tomorrowPlanText}
+                onChange={(e) => setTomorrowPlanText(e.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-md border border-white/15 bg-ink-2 p-3 font-body text-base text-parchment outline-none focus:border-brass"
+              />
+            </div>
+
+            <button
+              type="submit"
+              disabled={state === 'saving'}
+              className="w-full rounded-md bg-brass py-2.5 font-body text-base font-medium text-ink disabled:opacity-50"
+            >
+              {state === 'saving' ? 'Selando...' : sealed ? 'Atualizar registro' : 'Selar o dia'}
+            </button>
+
+            {state === 'saved' && (
+              <div className="flex items-center justify-center py-2">
+                <Stamp ringText="DIA REGISTRADO •" value="OK" caption="SELADO" tone="moss" size={88} />
+              </div>
+            )}
+            {state === 'error' && errorMessage && <p className="font-mono text-xs text-rust">{errorMessage}</p>}
+
+            {sealed && (
+              <div className="pt-1 text-center">
+                <ConfirmDeleteButton
+                  label="excluir este dia inteiro"
+                  confirmLabel="confirmar exclusão de todos os pilares"
+                  onConfirm={handleDeleteDay}
+                />
+              </div>
+            )}
+          </form>
         </div>
-
-        <button
-          type="submit"
-          disabled={state === 'saving'}
-          className="w-full rounded-md bg-brass py-2.5 font-body text-base font-medium text-ink disabled:opacity-50"
-        >
-          {state === 'saving' ? 'Selando...' : sealed ? 'Atualizar registro' : 'Selar o dia'}
-        </button>
-
-        {state === 'saved' && (
-          <div className="flex items-center justify-center py-2">
-            <Stamp ringText="DIA REGISTRADO •" value="OK" caption="SELADO" tone="moss" size={88} />
-          </div>
-        )}
-        {state === 'error' && errorMessage && <p className="font-mono text-xs text-rust">{errorMessage}</p>}
-
-        {sealed && (
-          <div className="pt-1 text-center">
-            <ConfirmDeleteButton
-              label="excluir este dia inteiro"
-              confirmLabel="confirmar exclusão de todos os pilares"
-              onConfirm={handleDeleteDay}
-            />
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   )
 }
