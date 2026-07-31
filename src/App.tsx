@@ -6,6 +6,7 @@ import { HojePage } from './pages/HojePage'
 import { AcademiaHojePage } from './pages/academia/AcademiaHojePage'
 import { AcademiaTiposPage } from './pages/academia/AcademiaTiposPage'
 import { AcademiaProgressoPage } from './pages/academia/AcademiaProgressoPage'
+import { AcademiaCorpoPage } from './pages/academia/AcademiaCorpoPage'
 import { TrabalhoPage } from './pages/TrabalhoPage'
 import { EstudosPage } from './pages/EstudosPage'
 import { FinancasPage } from './pages/FinancasPage'
@@ -32,6 +33,7 @@ function App() {
             <Route path="hoje" element={<AcademiaHojePage />} />
             <Route path="tipos" element={<AcademiaTiposPage />} />
             <Route path="progresso" element={<AcademiaProgressoPage />} />
+            <Route path="corpo" element={<AcademiaCorpoPage />} />
           </Route>
           <Route path="trabalho" element={<TrabalhoPage />} />
           <Route path="estudos" element={<EstudosPage />} />

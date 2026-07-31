@@ -10,6 +10,7 @@ const PATH_TITLES: Record<string, string> = {
   '/academia/hoje': 'Academia · Treino do dia',
   '/academia/tipos': 'Academia · Tipos de Treino',
   '/academia/progresso': 'Academia · Progresso',
+  '/academia/corpo': 'Academia · Peso & Medidas',
   '/trabalho': 'Trabalho',
   '/estudos': 'Estudos',
   '/financas': 'Finanças',

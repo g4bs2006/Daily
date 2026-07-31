@@ -30,6 +30,7 @@ const NAV_ITEMS: NavItem[] = [
       { to: '/academia/hoje', label: 'Treino do dia' },
       { to: '/academia/tipos', label: 'Tipos de Treino' },
       { to: '/academia/progresso', label: 'Progresso' },
+      { to: '/academia/corpo', label: 'Peso & Medidas' },
     ],
   },
   { to: '/trabalho', label: 'Trabalho', Icon: IconBriefcase },

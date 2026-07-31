@@ -99,6 +99,16 @@ export function IconPower(props: IconProps) {
   )
 }
 
+export function IconScale(props: IconProps) {
+  return (
+    <svg {...base(props)}>
+      <rect x="4" y="14" width="16" height="7" rx="1.5" />
+      <circle cx="12" cy="8" r="4" />
+      <path d="M12 12v2" />
+    </svg>
+  )
+}
+
 export function IconChevron(props: IconProps & { direction?: 'left' | 'right' }) {
   const { direction = 'left', ...rest } = props
   return (
