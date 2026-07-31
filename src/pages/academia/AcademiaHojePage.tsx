@@ -6,6 +6,7 @@ import { usePillarTrend } from '../../hooks/usePillarTrend'
 import { usePlanoSemana } from '../../hooks/usePlanoSemana'
 import { useTiposTreino } from '../../hooks/useTiposTreino'
 import { useExercicios } from '../../hooks/useExercicios'
+import { useExerciseHistory } from '../../hooks/useExerciseHistory'
 import { PillarPageShell, type SaveState } from '../../components/ui/PillarPageShell'
 import { PillarTrendSection } from '../../components/ui/PillarTrendSection'
 import { ProgressBar } from '../../components/ui/ProgressBar'
@@ -184,6 +185,8 @@ export function AcademiaHojePage() {
   const allExtraIds = Array.from(new Set([...extraIdsFromSets, ...pendingExtraIds]))
   const exercicioById = new Map(exercicios.map((ex) => [ex.id, ex]))
   const pickerOptions = exercicios.filter((ex) => !planExercicioIds.has(ex.id) && !allExtraIds.includes(ex.id))
+  const visibleExercicioIds = [...planExercicioIds, ...allExtraIds]
+  const history = useExerciseHistory(visibleExercicioIds, logDate)
 
   return (
     <PillarPageShell
@@ -302,6 +305,8 @@ export function AcademiaHojePage() {
                           : undefined
                       }
                       sets={setsForDate[item.exercicio_id] ?? []}
+                      lastSession={history[item.exercicio_id]?.lastSession}
+                      historicalMaxKg={history[item.exercicio_id]?.historicalMaxKg}
                       onAddSet={(reps, carga) => handleAddSet(item.exercicio_id, reps, carga)}
                       onUpdateSet={handleUpdateSet}
                       onRemoveSet={handleRemoveSet}
@@ -313,6 +318,8 @@ export function AcademiaHojePage() {
                       key={id}
                       nome={exercicioById.get(id)?.nome ?? ''}
                       sets={setsForDate[id] ?? []}
+                      lastSession={history[id]?.lastSession}
+                      historicalMaxKg={history[id]?.historicalMaxKg}
                       defaultOpen
                       onAddSet={(reps, carga) => handleAddSet(id, reps, carga)}
                       onUpdateSet={handleUpdateSet}

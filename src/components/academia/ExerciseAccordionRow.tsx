@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { SealDot } from '../ui/SealDot'
 import { IconChevron } from '../ui/icons'
+import type { HistorySet } from '../../hooks/useExerciseHistory'
 
 export type LoggedSet = { id: string; ordem_serie: number; reps: number | null; carga_kg: number | null }
 
@@ -9,9 +10,15 @@ type Props = {
   metaLabel?: string
   sets: LoggedSet[]
   defaultOpen?: boolean
+  lastSession?: { logDate: string; sets: HistorySet[] } | null
+  historicalMaxKg?: number | null
   onAddSet: (reps: number | null, carga: number | null) => void
   onUpdateSet: (id: string, reps: number | null, carga: number | null) => void
   onRemoveSet: (id: string) => void
+}
+
+function formatSets(sets: { reps: number | null; carga_kg: number | null }[]) {
+  return sets.map((s) => `${s.reps ?? '—'}×${s.carga_kg ?? '—'}`).join(', ')
 }
 
 export function ExerciseAccordionRow({
@@ -19,6 +26,8 @@ export function ExerciseAccordionRow({
   metaLabel,
   sets,
   defaultOpen = false,
+  lastSession,
+  historicalMaxKg,
   onAddSet,
   onUpdateSet,
   onRemoveSet,
@@ -28,6 +37,9 @@ export function ExerciseAccordionRow({
   const [carga, setCarga] = useState('')
   const [editingId, setEditingId] = useState<string | null>(null)
   const done = sets.length > 0
+
+  const todayMaxKg = sets.length > 0 ? Math.max(...sets.map((s) => s.carga_kg ?? 0)) : null
+  const isPr = todayMaxKg !== null && historicalMaxKg !== null && historicalMaxKg !== undefined && todayMaxKg > historicalMaxKg
 
   function startEdit(set: LoggedSet) {
     setEditingId(set.id)
@@ -54,7 +66,7 @@ export function ExerciseAccordionRow({
   }
 
   const summary = done
-    ? `${sets.length} série${sets.length === 1 ? '' : 's'} · até ${Math.max(...sets.map((s) => s.carga_kg ?? 0))}kg`
+    ? `${sets.length} série${sets.length === 1 ? '' : 's'} · até ${todayMaxKg}kg`
     : metaLabel ?? 'sem série ainda'
 
   return (
@@ -67,6 +79,11 @@ export function ExerciseAccordionRow({
         <span className="flex items-center gap-2.5">
           <SealDot filled={done} />
           <span className="font-body text-sm text-parchment">{nome}</span>
+          {isPr && (
+            <span className="rounded-full bg-moss/20 px-2 py-0.5 font-mono text-[10px] tracking-wide text-moss">
+              novo recorde
+            </span>
+          )}
         </span>
         <span className="flex items-center gap-2">
           <span className="font-mono text-xs text-parchment-dim">{summary}</span>
@@ -80,6 +97,12 @@ export function ExerciseAccordionRow({
 
       {open && (
         <div className="space-y-2 border-t border-dashed border-white/10 p-3.5">
+          {lastSession && (
+            <p className="font-mono text-xs text-parchment-dim">
+              última vez: {formatSets(lastSession.sets)}
+              {historicalMaxKg !== null && historicalMaxKg !== undefined && ` · recorde ${historicalMaxKg}kg`}
+            </p>
+          )}
           {sets.length > 0 && (
             <div className="flex flex-wrap gap-1.5">
               {sets.map((set) => (
